@@ -4,9 +4,9 @@
 #include <inttypes.h>
 #include <stdint.h>
 
-// FIXME, support Windows with QueryPerformanceCounter
+// TODO, support Windows with QueryPerformanceCounter
 #ifdef _WIN32
-#error Not defined for windows yet.
+#error Timer.h not implemented for windows.
 #else
 
 #include <time.h>

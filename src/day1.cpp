@@ -5,6 +5,8 @@
 #include "strtoint.h"
 #include "timer.h"
 
+static const size_t LINE_LENGTH = 8;
+
 int main(int argc, char **argv)
 {
     timer_start();
@@ -14,21 +16,21 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    FILE* input = open_file(argv[1]);
-    if (!input) {
-        printf("No input!\n");
-        return -1;
+    File file;
+    if(file.open(argv[1]) == false) {
+        printf("Couldn't read file %s\n", argv[1]);
     }
 
     Ringbuffer<int> ring_buffer;
     ring_buffer.init(3);
 
-    char str[32];
+    char str[LINE_LENGTH];
     int larger = 0;
     int larger_sums = 0;
     int last_sum = 0;
     int line_count = 0;
-    while (fgets(str, 32, input)) {
+
+    while (file.readline(str, LINE_LENGTH)) {
         ++line_count;
         const int depth = strtoint(str);
         if (line_count > 1 && ring_buffer.last() < depth) ++larger;
@@ -41,12 +43,13 @@ int main(int argc, char **argv)
         }
     }
 
-    close_file(input);
+    file.close();
     ring_buffer.free();
 
-    printf("Day 1 completion time: %" PRIu64 "ms\n", timer_stop());
+    const uint64_t completion_time = timer_stop();
+    printf("Day 1 completion time: %" PRIu64 "ms\n", completion_time);
     printf("Larger measurement: %i\n", larger);
-    printf("Larger 5 sums measurement: %i\n", larger_sums);
+    printf("Larger 3 sums measurement: %i\n", larger_sums);
 
     return 0;
 }

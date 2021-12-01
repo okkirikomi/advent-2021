@@ -61,6 +61,7 @@ bool File::open(const char* path) {
     int status = fstat(descriptor, &buffer);
     if (status != 0) goto beach;
 
+    // TODO, check if using mmap directly is faster for big enough files
     _data = (char*) malloc(buffer.st_size * sizeof(char));
     if (_data == NULL) goto beach;
 

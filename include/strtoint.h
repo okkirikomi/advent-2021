@@ -40,5 +40,4 @@ static int strtoint(const char* str) {
     return ret;
 }
 
-
 # endif // STRTOINT_H

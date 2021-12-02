@@ -12,7 +12,7 @@ inline int ascii_isalpha(const int c) {
 // barebone string to int
 // no limit check, only base 10
 // not safe
-static int strtoint(const char* str) {
+int strtoint(const char* str) {
     const char* i = str;
     int c = *i++;
     int negative = 0;

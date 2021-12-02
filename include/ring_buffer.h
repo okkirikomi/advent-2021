@@ -1,7 +1,6 @@
 #ifndef RING_BUFFER_H
 #define RING_BUFFER_H
 
-#include <assert.h>
 #include <stddef.h>
 #include <stdlib.h>
 
@@ -46,7 +45,6 @@ void Ringbuffer<T>::clear() {
 
 template <class T>
 void Ringbuffer<T>::init(const size_t size) {
-    assert(size > 0);
     _size = size;
     _idx = 0;
     _data = (T*) malloc(sizeof(T) * _size);

@@ -2,13 +2,18 @@
 
 INCLUDE="-I${PWD}/include"
 
-RANGE="1 1"
+RANGE="1 2"
 
 if [ -n "${1+set}" ]; then
   RANGE="$1 $1"
 fi
 
-FLAGS="-std=c++11 -march=native -fno-exceptions -Wextra -Wall -Wshadow -O2 -pedantic -pipe"
+if [ -n "${2+set}" ]; then
+  RANGE="$1 $2"
+fi
+
+WARNINGS="-Wextra -Wall -Wshadow -Wstrict-aliasing"
+FLAGS="-std=c++11 -march=native -fno-exceptions ${WARNINGS} -O2 -pedantic -pipe"
 # -fverbose-asm -save-temps -DNDEBUG
 
 mkdir -p out

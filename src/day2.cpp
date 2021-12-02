@@ -6,14 +6,13 @@
 
 static const size_t LINE_LENGTH = 12;
 
-static bool extract_val(const char* str, int* out) {
+static bool extract_digit(const char* str, int* out) {
     size_t i = 0;
     while (str[i] != ' ') {
         if (str[i] == '\0') return false;
         ++i;
     }
-    if (str[++i] == '\0') return false;
-    if (!ascii_isdigit(str[i])) return false;
+    if (!ascii_isdigit(str[++i])) return false;
 
     *out = str[i] - '0';
     return true;
@@ -31,6 +30,7 @@ int main(int argc, char **argv)
     File file;
     if(file.open(argv[1]) == false) {
         printf("Couldn't read file %s\n", argv[1]);
+        return -1;
     }
 
     char str[LINE_LENGTH];
@@ -40,7 +40,7 @@ int main(int argc, char **argv)
     int aim = 0;
     while (file.readline(str, LINE_LENGTH)) {
         int val;
-        if (!extract_val(str, &val)) continue;
+        if (!extract_digit(str, &val)) continue;
 
         switch(str[0]) {
             case 'f': 

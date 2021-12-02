@@ -19,6 +19,7 @@ int main(int argc, char **argv)
     File file;
     if(file.open(argv[1]) == false) {
         printf("Couldn't read file %s\n", argv[1]);
+        return -1;
     }
 
     Ringbuffer<int> ring_buffer;

@@ -43,7 +43,7 @@ int File::readline(char* out, const int buffer_size) {
         out[_it-start] = _data[_it];
         ++_it;
     }
-    const int n_read = _it - start;
+    const int n_read = _it - start + 1;
     out[_it-start] = '\0';
 
     // go over the line ending

@@ -13,7 +13,7 @@ static const size_t INPUT_MAX = 512;
 static const unsigned char DRAWN_VALUE = 0xFF;
 
 // last element hack, used to flag bingo
-// to avoid resizing our array
+// to avoid resizing our array of boards
 typedef unsigned char Board[BOARD_SIZE+1];
 
 typedef struct Winner {
@@ -62,7 +62,6 @@ void Boards::add_row(const char* str) {
             increase_cell();
             value = 0;
         }
-
         if (ascii_isdigit(str[it])) {
             const char c = str[it] - '0';
             value *= 10;
@@ -124,20 +123,17 @@ int Boards::mark(const unsigned char value, Winner& winner, const bool check) {
     for (size_t i = 0; i < _n_boards; ++i) {
         if (_boards[i][BOARD_SIZE] != 0) continue;
         for (size_t cell = 0; cell < BOARD_SIZE; ++cell) {
-            if (_boards[i][cell] == value) {
-                _boards[i][cell] = DRAWN_VALUE;
-                if (check) {
-                    if (check_bingo(_boards[i], cell)) {
-                        _boards[i][BOARD_SIZE] = DRAWN_VALUE;
-                        winner.last_called = value;
-                        winner.id = i;
-                        ++bingo;
-                        // FIXME, don't return just the last bingo if needed
-                    }
-                }
-                // a value can only appear once in a board
-                break;
+            if (_boards[i][cell] != value) continue;
+            _boards[i][cell] = DRAWN_VALUE;
+            if (check && check_bingo(_boards[i], cell)) {
+                _boards[i][BOARD_SIZE] = DRAWN_VALUE;
+                winner.last_called = value;
+                winner.id = i;
+                ++bingo;
+                // FIXME, don't return just the last bingo if needed
             }
+            // a value can only appear once in a board
+            break;
         }
     }
     return bingo;
@@ -147,9 +143,8 @@ uint Boards::unmarked_sum(const size_t board_id) {
     uint sum = 0;
     const Board& board = _boards[board_id];
     for (size_t i = 0; i < BOARD_SIZE; ++i) {
-        if (board[i] != DRAWN_VALUE) {
-            sum += (uint) board[i];
-        }
+        if (board[i] == DRAWN_VALUE) continue;
+        sum += (uint) board[i];
     }
     return sum;
 }
@@ -165,13 +160,13 @@ bool Boards::bingo_all_boards(unsigned char* draws, const size_t draw_size, uint
         Winner winner;
         const bool checkbingo = (i > 4)? true : false;
         bingo = mark(draws[i], winner, checkbingo);
-        if (bingo > 0) {
-            n_bingo += bingo;
-            // keep the first and last winners
-            // FIXME, this won't work if first winner not alone on its mark
-            if (n_bingo == 1) first_winner = winner;
-            if (n_bingo == _n_boards) last_winner = winner;
-        }
+        if (bingo == 0) continue;
+
+        n_bingo += bingo;
+        // keep the first and last winners
+        // FIXME, this won't work if first winner not alone on its mark
+        if (n_bingo == 1) first_winner = winner;
+        if (n_bingo >= _n_boards) last_winner = winner;
     }
     // we didn't end on a bingo, bail out
     if (!bingo) return false;

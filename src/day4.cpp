@@ -1,4 +1,3 @@
-#include <limits.h>
 #include <stdio.h>
 
 #include "file.h"
@@ -7,13 +6,15 @@
 
 static const size_t MAX_BOARDS = 128;
 static const size_t BOARD_SIDE = 5;
-static const size_t BOARD_SIZE = 25;
-static const size_t MAX_DRAWS = 99;
+static const size_t BOARD_SIZE = BOARD_SIDE * BOARD_SIDE;
+static const size_t MAX_DRAWS = 128;
 static const size_t INPUT_MAX = 512;
 
-static const unsigned char DRAWN_VALUE = 255;
+static const unsigned char DRAWN_VALUE = 0xFF;
 
-typedef unsigned char Board[BOARD_SIZE];
+// last element hack, used to flag bingo
+// to avoid resizing our array
+typedef unsigned char Board[BOARD_SIZE+1];
 
 typedef struct Winner {
     size_t last_called;
@@ -22,9 +23,11 @@ typedef struct Winner {
 
 typedef struct Boards {
     void init();
+    void destroy();
     uint unmarked_sum(const size_t board_id);
-    bool mark(const unsigned char value, Winner& winner, const bool checkbingo);
+    int mark(const unsigned char value, Winner& winner, const bool checkbingo);
     void add_row(const char* str);
+    bool bingo_all_boards(unsigned char* draws, const size_t draw_size, uint* first_score, uint* last_score);
 
 private:
     bool check_bingo(const Board& board, size_t last_cell);
@@ -36,8 +39,9 @@ private:
 } Boards;
 
 void Boards::increase_cell() {
-    ++ _current_cell;
+    ++_current_cell;
     if (_current_cell >= BOARD_SIZE) {
+        _boards[_n_boards][BOARD_SIZE] = 0; // last element is bingo flag
         if (_n_boards < MAX_BOARDS) _n_boards += 1;
         _current_cell = 0;
     }
@@ -71,6 +75,10 @@ void Boards::add_row(const char* str) {
     increase_cell();
 }
 
+void Boards::destroy() {
+    free(_boards);
+}
+
 void Boards::init() {
     _boards = (Board*) malloc(sizeof(Board) * BOARD_SIZE * MAX_BOARDS);
     if (_boards == NULL) abort();
@@ -78,8 +86,8 @@ void Boards::init() {
     _n_boards = 0;
 }
 
+// only check the two rows the last cell is in
 bool Boards::check_bingo(const Board& board, size_t last_cell) {
-    // only check the two rows the last cell is in
     // horizontal row
     const size_t x_mod = last_cell % (BOARD_SIDE);
     const size_t x_end = last_cell + (5 - x_mod);
@@ -107,17 +115,24 @@ bool Boards::check_bingo(const Board& board, size_t last_cell) {
     return bingo;
 }
 
-bool Boards::mark(const unsigned char value, Winner& winner, const bool check) {
+// if the board has not won yet,
+// set a matching tile to the drawn value if present
+// if we got a match, check if it completes a bingo
+// returns the number of bingos by this value
+int Boards::mark(const unsigned char value, Winner& winner, const bool check) {
+    int bingo = 0;
     for (size_t i = 0; i < _n_boards; ++i) {
+        if (_boards[i][BOARD_SIZE] != 0) continue;
         for (size_t cell = 0; cell < BOARD_SIZE; ++cell) {
             if (_boards[i][cell] == value) {
                 _boards[i][cell] = DRAWN_VALUE;
                 if (check) {
-                    const bool bingo = check_bingo(_boards[i], cell);
-                    if (bingo) {
+                    if (check_bingo(_boards[i], cell)) {
+                        _boards[i][BOARD_SIZE] = DRAWN_VALUE;
                         winner.last_called = value;
                         winner.id = i;
-                        return true;
+                        ++bingo;
+                        // FIXME, don't return just the last bingo if needed
                     }
                 }
                 // a value can only appear once in a board
@@ -125,7 +140,7 @@ bool Boards::mark(const unsigned char value, Winner& winner, const bool check) {
             }
         }
     }
-    return false;
+    return bingo;
 }
 
 uint Boards::unmarked_sum(const size_t board_id) {
@@ -137,6 +152,34 @@ uint Boards::unmarked_sum(const size_t board_id) {
         }
     }
     return sum;
+}
+
+bool Boards::bingo_all_boards(unsigned char* draws, const size_t draw_size, uint* first_score, uint* last_score) {
+    Winner first_winner = {};
+    Winner last_winner = {};
+
+    int bingo = false;
+    size_t n_bingo = 0;
+
+    for (size_t i = 0; i < draw_size && n_bingo < _n_boards; ++i) {
+        Winner winner;
+        const bool checkbingo = (i > 4)? true : false;
+        bingo = mark(draws[i], winner, checkbingo);
+        if (bingo > 0) {
+            n_bingo += bingo;
+            // keep the first and last winners
+            // FIXME, this won't work if first winner not alone on its mark
+            if (n_bingo == 1) first_winner = winner;
+            if (n_bingo == _n_boards) last_winner = winner;
+        }
+    }
+    // we didn't end on a bingo, bail out
+    if (!bingo) return false;
+
+    *first_score = unmarked_sum(first_winner.id) * (uint) first_winner.last_called;
+    *last_score = unmarked_sum(last_winner.id) * (uint) last_winner.last_called;
+
+    return true;
 }
 
 static size_t parse_draws(const char* str, unsigned char* draws, const size_t draw_size) {
@@ -161,24 +204,6 @@ static size_t parse_draws(const char* str, unsigned char* draws, const size_t dr
     }
     draws[draw_i] = draw;
     return draw_i + 1;
-}
-
-static uint bingo_until_score(Boards& boards, unsigned char* draws, const size_t draw_size) {
-    Winner winner;
-    bool bingo = false;
-
-    for (size_t i = 0; i < draw_size; ++i) {
-        const bool checkbingo = (i > 4)? true : false;
-        bingo = boards.mark(draws[i], winner, checkbingo);
-        if (bingo) break;
-    }
-    if (!bingo) {
-        return 0;
-    }
-
-    const uint score = boards.unmarked_sum(winner.id) * (uint) winner.last_called;
-
-    return score;
 }
 
 int main(int argc, char **argv)
@@ -207,8 +232,8 @@ int main(int argc, char **argv)
         const int n_read = file.readline(str, INPUT_MAX);
         if (n_read == 0) break;
 
-        if (n_line > 1) {
-            if (n_read > 1) boards.add_row(str);
+        if (n_line > 1 && n_read > 1) {
+            boards.add_row(str);
         } else if (n_line == 0) {
             draw_size = parse_draws(str, draws, MAX_DRAWS);
             if (draw_size == 0) {
@@ -219,10 +244,13 @@ int main(int argc, char **argv)
         ++n_line;
     }
 
-    const uint answer1 = bingo_until_score(boards, draws, draw_size);
-    const uint answer2 = 0;
+    uint answer1;
+    uint answer2;
+    if(!boards.bingo_all_boards(draws, draw_size, &answer1, &answer2))
+        return -1;
 
     file.close();
+    boards.destroy();
 
     const uint64_t completion_time = timer_stop();
     printf("Day 4 completion time: %" PRIu64 "ms\n", completion_time);

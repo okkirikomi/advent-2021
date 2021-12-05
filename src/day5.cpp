@@ -38,7 +38,7 @@ private:
 // Flag values:
 // 0 = empty cell, 1 = one vent, 2 = already counted
 //
-// The diagonal count also consider the straight lines.
+// The diagonal count also considers the straight lines.
 // Whenever we have an overlap on straight lines, we increment diagonal too.
 // If get one straight vent, we increment diagonal if there was one already.
 // For diagonals, same logic applies.
@@ -50,13 +50,13 @@ void Grid::set(const size_t x, const size_t y, const LINE_TYPE type) {
     if (type == NOT_DIAGONAL) {
         if (low_check == 0x1) {
             _n_overlap += 1;
-            cell += 1;
+            cell += 0x1;
             if (high_check < 0x20) {
                 _n_overlap_diagonal += 1;
                 cell += (0x20 - high_check);
             }
         } else {
-            cell += 1;
+            cell += 0x1;
             if (high_check == 0x10) {
                 _n_overlap_diagonal += 1;
                 cell += (0x20 - high_check);

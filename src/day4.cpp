@@ -248,7 +248,7 @@ int main(int argc, char **argv)
     boards.destroy();
 
     const uint64_t completion_time = timer_stop();
-    printf("Day 4 completion time: %" PRIu64 "ms\n", completion_time);
+    printf("Day 4 completion time: %" PRIu64 "µs\n", completion_time);
     printf("Answer 1 = %u\n", answer1);
     printf("Answer 2 = %i\n", answer2);
 

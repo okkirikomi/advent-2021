@@ -65,7 +65,7 @@ int main(int argc, char **argv)
     file.close();
 
     const uint64_t completion_time = timer_stop();
-    printf("Day 2 completion time: %" PRIu64 "ms\n", completion_time);
+    printf("Day 2 completion time: %" PRIu64 "µs\n", completion_time);
     printf("Answer 1 = %i\n", answer1);
     printf("Answer 2 = %i\n", answer2);
 

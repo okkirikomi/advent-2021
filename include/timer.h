@@ -17,6 +17,7 @@ static void timer_start() {
     clock_gettime(CLOCK_MONOTONIC_RAW, &start);
 }
 
+// this is µs
 static uint64_t timer_stop() {
     clock_gettime(CLOCK_MONOTONIC_RAW, &stop);
     return (stop.tv_sec - start.tv_sec) * 1000000 + (stop.tv_nsec - start.tv_nsec) / 1000;

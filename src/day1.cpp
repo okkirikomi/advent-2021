@@ -48,7 +48,7 @@ int main(int argc, char **argv)
     ring_buffer.free();
 
     const uint64_t completion_time = timer_stop();
-    printf("Day 1 completion time: %" PRIu64 "ms\n", completion_time);
+    printf("Day 1 completion time: %" PRIu64 "µs\n", completion_time);
     printf("Larger measurement: %i\n", larger);
     printf("Larger 3 sums measurement: %i\n", larger_sums);
 

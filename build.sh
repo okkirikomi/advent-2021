@@ -2,7 +2,7 @@
 
 INCLUDE="-I${PWD}/include"
 
-RANGE="1 5"
+RANGE="1 6"
 
 if [ -n "${1+set}" ]; then
   RANGE="$1 $1"

@@ -190,12 +190,10 @@ int main(int argc, char **argv)
     grid.init(GRID_SIDE*GRID_SIDE);
 
     char str[INPUT_MAX];
-    int n_line = 0;
     while (true) {
         const int n_read = file.readline(str, INPUT_MAX);
         if (n_read == 0) break;
         grid.add_vents(str);
-        ++n_line;
     }
 
     const uint answer1 = grid.overlap_count(NOT_DIAGONAL);

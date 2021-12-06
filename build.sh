@@ -13,7 +13,7 @@ if [ -n "${2+set}" ]; then
 fi
 
 WARNINGS="-Wextra -Wall -Wshadow -Wstrict-aliasing"
-FLAGS="-std=c++11 -march=native -fno-exceptions -fomit-frame-pointer ${WARNINGS} -O2 -pedantic -pipe"
+FLAGS="-std=c++11 -march=native -fno-exceptions -fomit-frame-pointer ${WARNINGS} -O3 -pedantic -pipe"
 # -fverbose-asm -save-temps -DNDEBUG
 
 mkdir -p out

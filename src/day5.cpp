@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <cmath>
 #include <stdio.h>
 
@@ -10,17 +11,17 @@ static const size_t GRID_SIDE = 1000;
 
 enum LINE_TYPE { DIAGONAL, NOT_DIAGONAL };
 
-// We keep an array of all position on grid containing the
+// We keep an array of all positions on grid containing the
 // number of vents at that position.
 // To avoid running the problem twice to provide answers
 // with and without counting diagonals (part 1 and 2),
 // we count them both in low and high part of 8 bits integer
 typedef struct Grid {
-    void init();
+    void init(const size_t size);
     void destroy();
     bool add_vents(const char* str);
     uint overlap_count(const LINE_TYPE type) const;
-    void set(const size_t x, const size_t y, const LINE_TYPE type);
+    void set(const uint x, const uint y, const LINE_TYPE type);
 
 private:
     uint8_t* _data;
@@ -31,18 +32,18 @@ private:
 
 // To avoid parsing the whole grid to count the overlapping vents,
 // we count them as we mark them.
-// Computing both part one and two at the same time makes this ugly.
-// First 3 low bits are used for straight lines count flag.
-// First 3 high bigs are used for diagonal count flag.
+// Computing both parts of the problem at the same time makes this ugly.
+// First 3 low bits are used for part one (straight lines) count flag.
+// First 3 high bits are used for part two (everything) count flag.
 //
 // Flag values:
 // 0 = empty cell, 1 = one vent, 2 = already counted
 //
-// The diagonal count also considers the straight lines.
-// Whenever we have an overlap on straight lines, we increment diagonal too.
-// If get one straight vent, we increment diagonal if there was one already.
-// For diagonals, same logic applies.
-void Grid::set(const size_t x, const size_t y, const LINE_TYPE type) {
+// The part two count also considers the straight lines.
+// Whenever we have an overlap on straight lines, we increment both counts.
+// If get one straight mark, we increment count #2 if there was one already.
+// For diagonal marks, same logic applies.
+void Grid::set(const uint x, const uint y, const LINE_TYPE type) {
     uint8_t& cell = _data[x+y*GRID_SIDE];
     const uint8_t low_check = (cell & 0x03);
     const uint8_t high_check = (cell & 0x30);
@@ -72,8 +73,9 @@ void Grid::set(const size_t x, const size_t y, const LINE_TYPE type) {
     }
 }
 
-void Grid::init() {
-    _size = GRID_SIDE*GRID_SIDE;
+void Grid::init(const size_t size) {
+    assert(size > 0);
+    _size = size;
     _data = (uint8_t*) calloc(sizeof(uint8_t), _size);
     if (_data == NULL) abort();
 
@@ -90,7 +92,7 @@ uint Grid::overlap_count(const LINE_TYPE type = NOT_DIAGONAL) const {
     else return _n_overlap;
 }
 
-// we expect a line in the form of:
+// We expect a line in the form of:
 // x1,y1 -> x2,y2
 // 800,363 -> 800,25
 bool Grid::add_vents(const char* str) {
@@ -111,6 +113,7 @@ bool Grid::add_vents(const char* str) {
         if (ascii_isdigit(str[it])) {
             const char c = str[it] - '0';
             value *= 10;
+            if (value >= GRID_SIDE) return false;
             value += c;
         }
         ++it;
@@ -123,7 +126,7 @@ bool Grid::add_vents(const char* str) {
     // we have a diagonal if one of the axis is not constant
     if (points[0] != points[2] && points[1] != points[3]) {
         // handle diagonal only at 45 degrees
-        if (abs(points[0]-points[2]) != abs(points[1] - points[3])) return false;
+        if (abs(points[0] - points[2]) != abs(points[1] - points[3])) return false;
 
         // not pretty but simple enough to handle all 4 directions
         // we don't need to check the boundary of the y array if the two previous ifs conditions are cleared
@@ -184,7 +187,7 @@ int main(int argc, char **argv)
     }
 
     Grid grid;
-    grid.init();
+    grid.init(GRID_SIDE*GRID_SIDE);
 
     char str[INPUT_MAX];
     int n_line = 0;

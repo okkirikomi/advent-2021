@@ -8,16 +8,16 @@
 static const size_t INPUT_MAX = 724;
 static const uint8_t GESTATION_LENGTH = 8;
 static const uint8_t ITER_PART_ONE = 80;
-static const uint8_t ITER_PART_TWO = 256 - 80; // we process part one first
+static const uint8_t ITER_PART_TWO = 256 - ITER_PART_ONE; // we process part one first
 
 typedef struct Gestation {
     void init();
     bool phil_fish(const char* str);
     void iter(const uint8_t days);
-    int64_t fish_count() const;
+    uint64_t fish_count() const;
 
 private:
-    // track of how many fishes are at a particular day
+    // track how many fishes are at a particular gestation day
     int64_t _days[GESTATION_LENGTH + 1];
 } Gestation;
 
@@ -27,10 +27,13 @@ void Gestation::init() {
     }
 }
 
+// Tried to be smart and move a pointer around,
+// or an index to day 0 instead of the integer data,
+// but compiler produces the fastest code with this.
 void Gestation::iter(const uint8_t days) {
     for (uint8_t day = 0; day < days; ++day) {
         const int64_t birth = _days[0]; // these ones will give birth
-        // otherwise, just down their days
+        // just down their days
         for (uint8_t i = 0; i < GESTATION_LENGTH; ++i) {
             _days[i] = _days[i+1];
         }
@@ -39,8 +42,8 @@ void Gestation::iter(const uint8_t days) {
     }
 }
 
-int64_t Gestation::fish_count() const {
-    int64_t count = 0;
+uint64_t Gestation::fish_count() const {
+    uint64_t count = 0;
     for (uint8_t i = 0; i < GESTATION_LENGTH+1; ++i) {
         count += _days[i];
     }
@@ -55,6 +58,7 @@ bool Gestation::phil_fish(const char* str) {
     uint8_t value = 0;
     // BETTER, instead of reading each byte one be one,
     // we could read WORDS and split them in digit/comma pairs
+    // since we know we'll always be reading the same width
     while (str[it] != '\0') {
         if (it > 0 && str[it-1] == ',') {
             _days[value] += 1;

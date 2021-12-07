@@ -1,8 +1,8 @@
-#include <algorithm>
 #include <cmath>
 #include <stdio.h>
 
 #include "file.h"
+#include "radix.h"
 #include "strtoint.h"
 #include "timer.h"
 
@@ -45,9 +45,9 @@ uint16_t Crabs::median() const {
     else return _crabs[half];
 }
 
-// BETTER, check for something that will beat std::sort for this use case
+// this is much faster than std::sort here
 void Crabs::sort() {
-    std::sort(_crabs, &_crabs[_n_crabs]);
+    radix_sort(_crabs, _n_crabs);
 }
 
 // We expect a line in the form of:
@@ -73,12 +73,12 @@ bool Crabs::fill_crab(const char* str) {
     return true;
 }
 
-// BETTER, check if we have enough duplicate crab values
-// that caching calculation result is faster.
+// the overhead of caching the result is slower than
+// calculating it each time with the provided input
 uint32_t Crabs::cost_two(const int16_t point) const {
     uint32_t cost = 0;
     for (size_t i = 0; i < _n_crabs; ++i) {
-        const uint32_t n_steps = abs(_crabs[i] - point);
+        const uint16_t n_steps = abs(_crabs[i] - point);
         cost += (n_steps+1) * n_steps / 2;
     }
     return cost;

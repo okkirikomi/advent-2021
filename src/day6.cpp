@@ -109,7 +109,7 @@ int main(int argc, char **argv)
     const uint64_t completion_time = timer_stop();
     printf("Day 6 completion time: %" PRIu64 "µs\n", completion_time);
     printf("Answer 1 = %" PRIu64"\n", answer1);
-    printf("Answer 1 = %" PRIu64"\n", answer2);
+    printf("Answer 2 = %" PRIu64"\n", answer2);
 
     return 0;
 }

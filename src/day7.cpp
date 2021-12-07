@@ -12,12 +12,14 @@ static const size_t MAX_CRABS = 1000;
 typedef struct Crabs {
     void init();
     bool fill_crab(const char* str);
-    uint32_t cost(const int16_t point);
+    uint32_t cost(const int16_t point) const;
+    uint32_t cost_two(const int16_t point) const;
     void sort();
-    int16_t median();
+    uint16_t median() const;
+    void mean(uint16_t* out_ceiling, uint16_t* out_floor) const;
 
 private:
-    int16_t _crabs[MAX_CRABS];
+    uint16_t _crabs[MAX_CRABS];
     size_t _n_crabs;
 
 } Crabs;
@@ -26,7 +28,18 @@ void Crabs::init() {
     _n_crabs = 0;
 }
 
-int16_t Crabs::median() {
+// Part 2's answer is always ceiling or floor of the mean
+// BETTER, can we be sure when to use which?
+void Crabs::mean(uint16_t* out_ceiling, uint16_t* out_floor) const {
+    uint32_t sum = 0; 
+    for (size_t i = 0; i < _n_crabs; ++i) {
+        sum += _crabs[i];
+    }
+    *out_floor = sum / _n_crabs;
+    *out_ceiling = *out_floor + 1;
+}
+
+uint16_t Crabs::median() const {
     const size_t half = _n_crabs/2;
     if (_n_crabs % 2 == 0) return (_crabs[half] + _crabs[half - 1]) / 2;
     else return _crabs[half];
@@ -41,7 +54,7 @@ void Crabs::sort() {
 // 16,1,2,0,4,2,7,1,2,14
 bool Crabs::fill_crab(const char* str) {
     size_t it = 0;
-    int16_t value = 0;
+    uint16_t value = 0;
     while (str[it] != '\0') {
         if (it > 0 && str[it-1] == ',') {
             _crabs[_n_crabs] = value;
@@ -60,10 +73,21 @@ bool Crabs::fill_crab(const char* str) {
     return true;
 }
 
-uint Crabs::cost(const int16_t point) {
-    uint cost = 0;
+// BETTER, check if we have enough duplicate crab values
+// that caching calculation result is faster.
+uint32_t Crabs::cost_two(const int16_t point) const {
+    uint32_t cost = 0;
     for (size_t i = 0; i < _n_crabs; ++i) {
-        cost += abs(_crabs[i] - point);
+        const uint32_t n_steps = abs(_crabs[i] - point);
+        cost += (n_steps+1) * n_steps / 2;
+    }
+    return cost;
+}
+
+uint32_t Crabs::cost(const int16_t point) const {
+    uint32_t cost = 0;
+    for (size_t i = 0; i < _n_crabs; ++i) {
+        cost += abs(_crabs[i] - point);   
     }
     return cost;
 }
@@ -95,17 +119,21 @@ int main(int argc, char **argv)
     }
     crabs.sort();
 
-    const int16_t median = crabs.median();
+    const uint16_t median = crabs.median();
+    const uint32_t answer1 = crabs.cost(median);
 
-    const uint64_t answer1 = crabs.cost(median);
-    const uint64_t answer2 = 0;
+    uint16_t mean_ceiling, mean_floor;
+    crabs.mean(&mean_ceiling, &mean_floor);
+    const uint32_t cost_ceiling = crabs.cost_two(mean_floor);
+    const uint32_t cost_floor = crabs.cost_two(mean_floor);
+    const uint32_t answer2 = cost_floor < cost_ceiling? cost_floor : cost_ceiling;
 
     file.close();
 
     const uint64_t completion_time = timer_stop();
     printf("Day 7 completion time: %" PRIu64 "µs\n", completion_time);
-    printf("Answer 1 = %" PRIu64"\n", answer1);
-    printf("Answer 1 = %" PRIu64"\n", answer2);
+    printf("Answer 1 = %i\n", answer1);
+    printf("Answer 2 = %i\n", answer2);
 
     return 0;
 }

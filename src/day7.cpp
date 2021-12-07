@@ -1,13 +1,14 @@
 #include <cmath>
 #include <stdio.h>
 
+#include "bitset.h"
 #include "file.h"
 #include "radix.h"
 #include "strtoint.h"
 #include "timer.h"
 
 static const size_t INPUT_MAX = 4000;
-static const size_t MAX_CRABS = 1000;
+static const uint16_t MAX_CRABS = 1000;
 
 typedef struct Crabs {
     void init();
@@ -20,7 +21,7 @@ typedef struct Crabs {
 
 private:
     uint16_t _crabs[MAX_CRABS];
-    size_t _n_crabs;
+    uint16_t _n_crabs;
 
 } Crabs;
 
@@ -40,8 +41,8 @@ void Crabs::mean(uint16_t* out_ceiling, uint16_t* out_floor) const {
 }
 
 uint16_t Crabs::median() const {
-    const size_t half = _n_crabs/2;
-    if (_n_crabs % 2 == 0) return (_crabs[half] + _crabs[half - 1]) / 2;
+    const uint16_t half = _n_crabs >> 1;
+    if (BIT_CHECK(_n_crabs, 0) == 0) return (_crabs[half] + _crabs[half - 1]) / 2;
     else return _crabs[half];
 }
 
@@ -77,7 +78,7 @@ bool Crabs::fill_crab(const char* str) {
 // calculating it each time with the provided input
 uint32_t Crabs::cost_two(const int16_t point) const {
     uint32_t cost = 0;
-    for (size_t i = 0; i < _n_crabs; ++i) {
+    for (uint16_t i = 0; i < _n_crabs; ++i) {
         const uint16_t n_steps = abs(_crabs[i] - point);
         cost += (n_steps+1) * n_steps / 2;
     }
@@ -86,8 +87,8 @@ uint32_t Crabs::cost_two(const int16_t point) const {
 
 uint32_t Crabs::cost(const int16_t point) const {
     uint32_t cost = 0;
-    for (size_t i = 0; i < _n_crabs; ++i) {
-        cost += abs(_crabs[i] - point);   
+    for (uint16_t i = 0; i < _n_crabs; ++i) {
+        cost += abs(_crabs[i] - point);
     }
     return cost;
 }

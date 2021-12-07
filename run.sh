@@ -1,6 +1,6 @@
 #!/bin/bash
 
-RANGE="1 6"
+RANGE="1 7"
 
 if [ -n "${1+set}" ]; then
   RANGE="$1 $1"
@@ -15,4 +15,4 @@ do
     echo "Running Day $i"
     out/day$i input/day$i
     echo ""
-done  
+done

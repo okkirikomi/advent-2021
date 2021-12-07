@@ -1,0 +1,111 @@
+#include <algorithm>
+#include <cmath>
+#include <stdio.h>
+
+#include "file.h"
+#include "strtoint.h"
+#include "timer.h"
+
+static const size_t INPUT_MAX = 4000;
+static const size_t MAX_CRABS = 1000;
+
+typedef struct Crabs {
+    void init();
+    bool fill_crab(const char* str);
+    uint32_t cost(const int16_t point);
+    void sort();
+    int16_t median();
+
+private:
+    int16_t _crabs[MAX_CRABS];
+    size_t _n_crabs;
+
+} Crabs;
+
+void Crabs::init() {
+    _n_crabs = 0;
+}
+
+int16_t Crabs::median() {
+    const size_t half = _n_crabs/2;
+    if (_n_crabs % 2 == 0) return (_crabs[half] + _crabs[half - 1]) / 2;
+    else return _crabs[half];
+}
+
+// BETTER, check for something that will beat std::sort for this use case
+void Crabs::sort() {
+    std::sort(_crabs, &_crabs[_n_crabs]);
+}
+
+// We expect a line in the form of:
+// 16,1,2,0,4,2,7,1,2,14
+bool Crabs::fill_crab(const char* str) {
+    size_t it = 0;
+    int16_t value = 0;
+    while (str[it] != '\0') {
+        if (it > 0 && str[it-1] == ',') {
+            _crabs[_n_crabs] = value;
+            if ((++_n_crabs) >= MAX_CRABS) return false;
+            value = 0;
+        }
+        if (ascii_isdigit(str[it])) {
+            const char c = str[it] - '0';
+            value *= 10; // this can overflow
+            value += c;
+        }
+        ++it;
+    }
+    _crabs[_n_crabs] = value;
+    _n_crabs++;
+    return true;
+}
+
+uint Crabs::cost(const int16_t point) {
+    uint cost = 0;
+    for (size_t i = 0; i < _n_crabs; ++i) {
+        cost += abs(_crabs[i] - point);
+    }
+    return cost;
+}
+
+int main(int argc, char **argv)
+{
+    timer_start();
+
+    if (argc < 1) {
+        printf("No input!\n");
+        return -1;
+    }
+
+    File file;
+    if(file.open(argv[1]) == false) {
+        printf("Couldn't read file %s\n", argv[1]);
+        return -1;
+    }
+
+    Crabs crabs;
+    crabs.init();
+
+    char str[INPUT_MAX];
+    while (file.readline(str, INPUT_MAX)) {
+        if (!crabs.fill_crab(str)) {
+            printf("Error parsing input.\n");
+            return -1;
+        }
+    }
+    crabs.sort();
+
+    const int16_t median = crabs.median();
+
+    const uint64_t answer1 = crabs.cost(median);
+    const uint64_t answer2 = 0;
+
+    file.close();
+
+    const uint64_t completion_time = timer_stop();
+    printf("Day 7 completion time: %" PRIu64 "µs\n", completion_time);
+    printf("Answer 1 = %" PRIu64"\n", answer1);
+    printf("Answer 1 = %" PRIu64"\n", answer2);
+
+    return 0;
+}

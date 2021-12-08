@@ -1,6 +1,6 @@
 #!/bin/bash
 
-RANGE="1 7"
+RANGE="1 8"
 
 if [ -n "${1+set}" ]; then
   RANGE="$1 $1"

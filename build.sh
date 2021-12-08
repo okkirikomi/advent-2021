@@ -2,7 +2,7 @@
 
 INCLUDE="-I${PWD}/include"
 
-RANGE="1 7"
+RANGE="1 8"
 
 if [ -n "${1+set}" ]; then
   RANGE="$1 $1"
@@ -20,7 +20,7 @@ mkdir -p out
 
 for i in `seq $RANGE`;
 do
-    COMMAND="g++-11 ${FLAGS} ${INCLUDE} src/day$i.cpp -o out/day$i"
+    COMMAND="g++ ${FLAGS} ${INCLUDE} src/day$i.cpp -o out/day$i"
     echo "$COMMAND"
     ${COMMAND}
 done

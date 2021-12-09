@@ -1,131 +1,139 @@
+#include <cmath>
 #include <stdio.h>
+#include <unordered_map>
 
 #include "file.h"
 #include "strtoint.h"
 #include "timer.h"
 
-static const size_t INPUT_MAX = 128;
-static const size_t MAX_PATTERNS = 210;
-static const size_t PATTERN_LENGTH = 64;
-//static const size_t OUTPUT_LENGTH = 32;
-static const size_t N_DIGITS = 10;
-static const size_t N_OUTPUT = 4;
-static const size_t N_SEGMENTS = 7 + 1; // extra for \0
+static const uint8_t INPUT_MAX = 128;
+static const uint8_t MAX_PATTERNS = 10;
+static const uint8_t N_DIGITS = 10;
+static const uint8_t N_OUTPUT = 4;
+static const uint8_t VAL_LENGTH = 7 + 1; // extra for \0
 
-const uint8_t segments_digit[N_DIGITS] = { 6, 2, 5, 5, 4, 5, 6, 3, 7, 6 };
+const uint8_t segments_for_digit[N_DIGITS] = { 6, 2, 5, 5, 4, 5, 6, 3, 7, 6 };
 
-typedef struct Signal {
-    char string[N_SEGMENTS];
-    uint8_t len;
-} Signal;
+// BETTER, use a better data structure than std
+typedef std::unordered_map<char, int> char_count;
 
-// FIXME this name is garbage
-typedef struct Signal_patterns {
-    bool input(const char* str);
+typedef struct Segments {
+    bool process_input(const char* str);
     void init();
-    void print_all();
-    uint32_t unique_segment_counts() const ;
-    void decode();
+    uint16_t unique_segment() const { return _n_unique_segments; }
+    uint32_t sum_outputs() const { return _sum_outputs; }
 
 private:
-    Signal* next_fill();
-    // we don't need to keep all patterns, just the current
-    Signal _patterns[MAX_PATTERNS][N_DIGITS];
-    Signal _output[MAX_PATTERNS][N_OUTPUT];
-    uint8_t _n_patterns;
-    uint8_t _n_digit;
-    bool _input_patterns;
+    void check_unique_segments(const uint8_t size);
+    void solve(const char output[N_OUTPUT][VAL_LENGTH]);
+    void set_key(const char patterns[MAX_PATTERNS][VAL_LENGTH]);
+    uint16_t _n_unique_segments;
+    uint32_t _sum_outputs;
+    char_count _key;
 
-} Signal_patterns;
+} Segments;
 
-void Signal_patterns::init() {
-    _input_patterns = true;
-    _n_patterns = 0;
-    _n_digit = 0;
+void Segments::init() {
+    _n_unique_segments = 0;
+    _sum_outputs = 0;
+    _key.reserve(7);
 }
 
-void Signal_patterns::print_all() {
-    for (size_t i = 0; i < _n_patterns; ++i) {
-        for (size_t j = 0; j < N_DIGITS; ++j)
-            printf("|%s| ", _patterns[i][j].string);
-        printf("%zu\n", i);
-    }
-    printf("|\n");
-    for (size_t i = 0; i < _n_patterns; ++i) {
-        for (size_t j = 0; j < N_OUTPUT; ++j)
-            printf("|%s| ", _output[i][j].string);
-        printf("\n");
-    }
-}
-
-// FIXME, count them as we parse the input
-uint32_t Signal_patterns::unique_segment_counts() const {
-    uint32_t count = 0;
-    for (size_t i = 0; i < _n_patterns; ++i)
-    for (size_t j = 0; j < N_OUTPUT; ++j) {
-        const uint8_t& len = _output[i][j].len;
-        if (len == segments_digit[1] || len == segments_digit[4]
-         || len == segments_digit[7] || len == segments_digit[8]) {
-            ++count;
-            //printf("%s\n",_output[i][j]);
-        }
-    }
-    return count;
-}
-
-Signal* Signal_patterns::next_fill() {
-    //printf("next_fill %i %u %u\n", _input_patterns, _n_patterns, _n_digit);
-    if (_input_patterns)  {
-        return &_patterns[_n_patterns][_n_digit];
-    } else {
-        //if (_n_digit >= N_OUTPUT) return NULL;
-        return &_output[_n_patterns][_n_digit];
-    }
-}
-
-inline int ascii_is_signal(const int c) {
+static int ascii_is_signal(const int c) {
     return ((c >= 'a' && c <= 'g')? 1 : 0);
 }
 
-void Signal_patterns::decode() {
+void Segments::set_key(const char patterns[MAX_PATTERNS][VAL_LENGTH]) {
+    _key = {{'a', 0}, {'b', 0}, {'c', 0}, {'d', 0}, {'e', 0}, {'f', 0}, {'g', 0}};
+    for (uint8_t i = 0; i < MAX_PATTERNS; ++i) {
+        uint8_t it = 0;
+        while (patterns[i][it] != '\0') {
+            _key[patterns[i][it]] += 1;
+            ++it;
+        }
+    }
+}
 
+// Not 100% sure why this works yet
+void Segments::solve(const char output[N_OUTPUT][VAL_LENGTH]) {
+    for (uint8_t i = 1; i < 5; ++i) {
+        uint8_t str_it = 0;
+        int total = 0;
+        while (output[i-1][str_it] != '\0') {
+            total += _key[output[i-1][str_it]];
+            ++str_it;
+        }
+        int d;
+        switch (total) {
+            default:
+            case 42: d = 0; break;
+            case 17: d = 1; break;
+            case 34: d = 2; break;
+            case 39: d = 3; break;
+            case 30: d = 4; break;
+            case 37: d = 5; break;
+            case 41: d = 6; break;
+            case 25: d = 7; break;
+            case 49: d = 8; break;
+            case 45: d = 9; break;
+        }
+        _sum_outputs += d * pow(10, (4-i));
+    }
+}
+
+void Segments::check_unique_segments(const uint8_t size) {
+    if (size == segments_for_digit[1] || size == segments_for_digit[4] ||
+        size == segments_for_digit[7] || size == segments_for_digit[8]) {
+        ++_n_unique_segments;
+    }
 }
 
 // We expect a line in the form of:
 // acedgfb cdfbe gcdfa fbcad dab cefabd cdfgeb eafb cagedb ab | cdfeb fcadb cdfeb cdbaf
-bool Signal_patterns::input(const char* str) {
-    //printf("INPUT: %s\n", str);
-    size_t it = 0;
-    size_t it_pattern = 0;
-    Signal* to_fill = next_fill();
-    _n_digit = 1;
-    _input_patterns = true;
-    while (str[it] != '\0') {
-        if (ascii_is_signal(str[it])) {
-            to_fill->string[it_pattern] = str[it];
-            if ((++it_pattern) >= N_SEGMENTS) return false;
-        } else if (str[it] == ' ' && str[it-1] != '|') {
-            to_fill->string[it_pattern] = '\0';
-            to_fill->len = it_pattern;
-            //printf("FILLING |%s|\n", to_fill->string);
-            to_fill = next_fill();
-            if((++_n_digit) == N_DIGITS) _n_digit = 0;
-            it_pattern = 0;
-        } else if (str[it] == '|') {
-            //printf("SWITCH\n");
-            _input_patterns = false;
-            _n_digit = 0;
-            to_fill = next_fill();
-            _n_digit = 1;
+bool Segments::process_input(const char* str) {
+    size_t str_it = 0;
+    uint8_t it_pattern = 0;
+    uint8_t it_fill = 0;
+    char patterns[MAX_PATTERNS][VAL_LENGTH];
+
+    // fill the 10 signal patterns
+    while (str[str_it] != '\0') {
+        if (ascii_is_signal(str[str_it])) {
+            patterns[it_pattern][it_fill] = str[str_it];
+            if ((++it_fill) >= VAL_LENGTH) return false;
+        } else if (str[str_it] == ' ' && str[str_it-1] != '|') {
+            patterns[it_pattern][it_fill] = '\0';
+            ++it_pattern;
+            if (str[str_it+1] != '|' && it_pattern >= MAX_PATTERNS) return false;
+            it_fill = 0;
+        } else if (str[str_it] == '|') {
+            ++str_it;
+            break;
         }
-        ++it;
+        ++str_it;
     }
-    to_fill->string[it_pattern] = '\0';
-    //printf("FILLING |%s|\n", to_fill->string);
-    to_fill->len = it_pattern;
-    _n_digit = 0;
-    // FIXME proper check
-    if ((++_n_patterns) >= MAX_PATTERNS) return false;
+    set_key(patterns);
+
+    char output[N_OUTPUT][VAL_LENGTH];
+    it_pattern = 0;
+    it_fill = 0;
+
+    // fill the 4 output values
+    while (str[str_it] != '\0') {
+        if (ascii_is_signal(str[str_it])) {
+            output[it_pattern][it_fill] = str[str_it];
+            if ((++it_fill) >= VAL_LENGTH) return false;
+        } else if (str[str_it] == ' ' && it_fill > 0) {
+            output[it_pattern][it_fill] = '\0';
+            check_unique_segments(it_fill);
+            if(++it_pattern >= N_OUTPUT) return false;
+            it_fill = 0;
+        }
+        ++str_it;
+    }
+    output[it_pattern][it_fill] = '\0';
+    check_unique_segments(it_fill);
+    solve(output);
     return true;
 }
 
@@ -144,20 +152,19 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    Signal_patterns patterns;
+    Segments patterns;
     patterns.init();
 
     char str[INPUT_MAX];
     while (file.readline(str, INPUT_MAX)) {
-        if (!patterns.input(str)) {
+        if (!patterns.process_input(str)) {
             printf("error with input.\n");
             return -1;
         }
     }
-    //patterns.print_all();
 
-    const uint32_t answer1 = patterns.unique_segment_counts();
-    const uint32_t answer2 = 0;
+    const uint16_t answer1 = patterns.unique_segment();
+    const uint32_t answer2 = patterns.sum_outputs();
 
     file.close();
 

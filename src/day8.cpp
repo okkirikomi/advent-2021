@@ -1,6 +1,6 @@
 #include <cmath>
 #include <stdio.h>
-#include <unordered_map>
+#include <string.h>
 
 #include "file.h"
 #include "strtoint.h"
@@ -11,11 +11,9 @@ static const uint8_t MAX_PATTERNS = 10;
 static const uint8_t N_DIGITS = 10;
 static const uint8_t N_OUTPUT = 4;
 static const uint8_t VAL_LENGTH = 7 + 1; // extra for \0
+static const uint8_t KEY_OFFSET = 97;
 
 const uint8_t segments_for_digit[N_DIGITS] = { 6, 2, 5, 5, 4, 5, 6, 3, 7, 6 };
-
-// BETTER, use a better data structure than std
-typedef std::unordered_map<char, int> char_count;
 
 typedef struct Segments {
     bool process_input(const char* str);
@@ -29,14 +27,14 @@ private:
     void set_key(const char patterns[MAX_PATTERNS][VAL_LENGTH]);
     uint16_t _n_unique_segments;
     uint32_t _sum_outputs;
-    char_count _key;
+    uint8_t _key[7];
 
 } Segments;
 
 void Segments::init() {
     _n_unique_segments = 0;
     _sum_outputs = 0;
-    _key.reserve(7);
+    memset(_key, 0, sizeof(uint8_t)*7);
 }
 
 static int ascii_is_signal(const int c) {
@@ -44,11 +42,11 @@ static int ascii_is_signal(const int c) {
 }
 
 void Segments::set_key(const char patterns[MAX_PATTERNS][VAL_LENGTH]) {
-    _key = {{'a', 0}, {'b', 0}, {'c', 0}, {'d', 0}, {'e', 0}, {'f', 0}, {'g', 0}};
+    memset(_key, 0, sizeof(uint8_t)*7);
     for (uint8_t i = 0; i < MAX_PATTERNS; ++i) {
         uint8_t it = 0;
         while (patterns[i][it] != '\0') {
-            _key[patterns[i][it]] += 1;
+            _key[patterns[i][it] - KEY_OFFSET] += 1;
             ++it;
         }
     }
@@ -60,7 +58,7 @@ void Segments::solve(const char output[N_OUTPUT][VAL_LENGTH]) {
         uint8_t str_it = 0;
         int total = 0;
         while (output[i-1][str_it] != '\0') {
-            total += _key[output[i-1][str_it]];
+            total += _key[output[i-1][str_it] - KEY_OFFSET];
             ++str_it;
         }
         int d;

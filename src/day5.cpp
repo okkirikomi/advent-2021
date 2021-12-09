@@ -21,7 +21,8 @@ typedef struct Grid {
     void destroy();
     bool add_vents(const char* str);
     uint overlap_count(const LINE_TYPE type) const;
-    void set(const uint x, const uint y, const LINE_TYPE type);
+    void set_straight(const uint x, const uint y);
+    void set_diagonal(const uint x, const uint y);
 
 private:
     uint8_t* _data;
@@ -43,33 +44,37 @@ private:
 // Whenever we have an overlap on straight lines, we increment both counts.
 // If get one straight mark, we increment count #2 if there was one already.
 // For diagonal marks, same logic applies.
-void Grid::set(const uint x, const uint y, const LINE_TYPE type) {
+void Grid::set_straight(const uint x, const uint y) {
     uint8_t& cell = _data[x+y*GRID_SIDE];
     const uint8_t low_check = (cell & 0x03);
     const uint8_t high_check = (cell & 0x30);
 
-    if (type == NOT_DIAGONAL) {
-        if (low_check == 0x1) {
-            _n_overlap += 1;
-            cell += 0x1;
-            if (high_check < 0x20) {
-                _n_overlap_diagonal += 1;
-                cell += (0x20 - high_check);
-            }
-        } else {
-            cell += 0x1;
-            if (high_check == 0x10) {
-                _n_overlap_diagonal += 1;
-                cell += (0x20 - high_check);
-            }
+    if (low_check == 0x1) {
+        _n_overlap += 1;
+        cell += 0x1;
+        if (high_check < 0x20) {
+            _n_overlap_diagonal += 1;
+            cell += (0x20 - high_check);
         }
     } else {
-        if ((low_check == 0x1 && high_check == 0x00) || (low_check == 0x0 && high_check == 0x10)) {
-            cell += (0x20 - high_check);
+        cell += 0x1;
+        if (high_check == 0x10) {
             _n_overlap_diagonal += 1;
-        } else {
-            cell += 0x10;
+            cell += (0x20 - high_check);
         }
+    }
+}
+
+void Grid::set_diagonal(const uint x, const uint y) {
+    uint8_t& cell = _data[x+y*GRID_SIDE];
+    const uint8_t low_check = (cell & 0x03);
+    const uint8_t high_check = (cell & 0x30);
+
+    if ((low_check == 0x1 && high_check == 0x00) || (low_check == 0x0 && high_check == 0x10)) {
+        cell += (0x20 - high_check);
+        _n_overlap_diagonal += 1;
+    } else {
+        cell += 0x10;
     }
 }
 
@@ -132,15 +137,15 @@ bool Grid::add_vents(const char* str) {
         // we don't need to check the boundary of the y array if the two previous ifs conditions are cleared
         if (points[0] < points[2])  {
             if (points[1] < points[3]) {
-                for (int x = points[0], y = points[1]; x <= points[2]; ++x, ++y) set(x, y, DIAGONAL);
+                for (int x = points[0], y = points[1]; x <= points[2]; ++x, ++y) set_diagonal(x, y);
             } else {
-                for (int x = points[0], y = points[1]; x <= points[2]; ++x, --y) set(x, y, DIAGONAL);
+                for (int x = points[0], y = points[1]; x <= points[2]; ++x, --y) set_diagonal(x, y);
             }
         } else {
             if (points[1] < points[3]) {
-                for (int x = points[0], y = points[1]; x >= points[2]; --x, ++y) set(x, y, DIAGONAL);
+                for (int x = points[0], y = points[1]; x >= points[2]; --x, ++y) set_diagonal(x, y);
             } else {
-                for (int x = points[0], y = points[1]; x >= points[2]; --x, --y) set(x, y, DIAGONAL);
+                for (int x = points[0], y = points[1]; x >= points[2]; --x, --y) set_diagonal(x, y);
             }
         }
         return true;
@@ -165,8 +170,8 @@ bool Grid::add_vents(const char* str) {
     }
 
     // fill x1 -> x2 or y1 -> y2
-    if (x1 != x2) for(int x = x1; x <= x2; ++x) set(x, points[1], NOT_DIAGONAL);
-    else for(int y = y1; y <= y2; ++y) set(points[0], y, NOT_DIAGONAL);
+    if (x1 != x2) for(int x = x1; x <= x2; ++x) set_straight(x, points[1]);
+    else for(int y = y1; y <= y2; ++y) set_straight(points[0], y);
 
     return true;
 }

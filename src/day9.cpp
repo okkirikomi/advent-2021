@@ -53,7 +53,7 @@ uint32_t Heightmap::largest_basins() {
 
         // visit neighbours as long as they are not 9
         Pos visiting;
-        while (_stack.pop(visiting)) {        
+        while (_stack.pop(std::move(visiting))) {        
             if (visiting.x != 0 && 9 != _map[visiting.y][visiting.x-1]) {
                 Pos to_visit;
                 to_visit.x = visiting.x-1;
@@ -177,6 +177,7 @@ int main(int argc, char **argv)
     const uint32_t answer2 = height_map.largest_basins();
 
     file.close();
+    height_map.destroy();
 
     const uint64_t completion_time = timer_stop();
     printf("Day 9 completion time: %" PRIu64 "µs\n", completion_time);

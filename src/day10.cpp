@@ -133,6 +133,7 @@ int main(int argc, char **argv)
     const uint64_t answer2 = parser.completion_score();
 
     file.close();
+    parser.close();
 
     const uint64_t completion_time = timer_stop();
     printf("Day 10 completion time: %" PRIu64 "µs\n", completion_time);

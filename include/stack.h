@@ -2,6 +2,7 @@
 #define STACK_H
 
 #include <assert.h>
+#include <utility>
 
 // Simple stack with fixed memory
 // Implement custom allocator if needed
@@ -14,6 +15,7 @@ struct Stack
     bool push(T&&);
     bool push(const T&);
     bool pop(T&);
+    bool pop(T&&);
     inline void clear() { _pos = -1; };
     inline int32_t size() const { return _pos+1; }
 private:
@@ -49,6 +51,15 @@ bool Stack<T>::push(T&& val) {
     if (_pos == _size) return false;
 
     _data[++_pos] = std::move(val);
+    return true;
+}
+
+template <class T> 
+bool Stack<T>::pop(T&& ret) {
+    if (_pos == -1) return false;
+
+    std::swap(ret, _data[_pos]);
+    _pos -= 1;
     return true;
 }
 

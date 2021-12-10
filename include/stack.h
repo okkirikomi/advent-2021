@@ -5,13 +5,13 @@
 
 // Simple stack with fixed memory
 // Implement custom allocator if needed
-// Implement move for non POD if needed
 
 template <class T>
 struct Stack
 {
     bool init(const int32_t size);
     void destroy();
+    bool push(T&&);
     bool push(const T&);
     bool pop(T&);
     inline void clear() { _pos = -1; };
@@ -41,6 +41,14 @@ bool Stack<T>::push(const T& val) {
     if (_pos == _size) return false;
 
     _data[++_pos] = val;
+    return true;
+}
+
+template <class T>
+bool Stack<T>::push(T&& val) {
+    if (_pos == _size) return false;
+
+    _data[++_pos] = std::move(val);
     return true;
 }
 

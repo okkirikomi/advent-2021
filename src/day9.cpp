@@ -1,8 +1,7 @@
-#include <queue>
 #include <stdio.h>
 
 #include "file.h"
-#include "radix.h"
+#include "stack.h"
 #include "strtoint.h"
 #include "timer.h"
 
@@ -17,21 +16,28 @@ typedef struct Pos {
 
 typedef struct Heightmap {
     void init();
+    void destroy();
     uint16_t low_points_risk();
     uint32_t largest_basins();
     bool add_row(const char* str);
 
 private:
     Pos _low_points[MAX_POINTS];
+    Stack<Pos> _stack;
     uint8_t _map[MAX_ROW][N_COL];
     uint8_t _n_row;
     uint8_t _n_lows;
 
 } Heightmap;
 
+void Heightmap::destroy() {
+    _stack.destroy();
+}
+
 void Heightmap::init() {
     _n_row = 0;
     _n_lows = 0;
+    _stack.init(32);
 }
 
 uint32_t Heightmap::largest_basins() {
@@ -40,22 +46,20 @@ uint32_t Heightmap::largest_basins() {
     uint16_t c = 0;
     for (uint8_t i = 0; i < _n_lows; ++i) {
         uint16_t basin_size = 1;
-        // FIXME, get rid of std::queue
-        std::queue<Pos> queue;
+        _stack.clear();
         // we set to 9 to mark visited
         _map[_low_points[i].y][_low_points[i].x] = 9;
-        queue.push(std::move(_low_points[i]));
+        _stack.push(std::move(_low_points[i]));
 
         // visit neighbours as long as they are not 9
-        while (!queue.empty()) {
-            Pos visiting = std::move(queue.front());
-            queue.pop();            
+        Pos visiting;
+        while (_stack.pop(visiting)) {        
             if (visiting.x != 0 && 9 != _map[visiting.y][visiting.x-1]) {
                 Pos to_visit;
                 to_visit.x = visiting.x-1;
                 to_visit.y = visiting.y;
                 _map[to_visit.y][to_visit.x] = 9;
-                queue.push(std::move(to_visit));
+                _stack.push(std::move(to_visit));
                 basin_size += 1;
             }
             if (visiting.y != 0 && 9 != _map[visiting.y-1][visiting.x]) {
@@ -63,7 +67,7 @@ uint32_t Heightmap::largest_basins() {
                 to_visit.x = visiting.x;
                 to_visit.y = visiting.y-1;
                 _map[to_visit.y][to_visit.x] = 9;
-                queue.push(std::move(to_visit));
+                _stack.push(std::move(to_visit));
                 basin_size += 1;
             }
             if (visiting.x < N_COL - 1 && 9 != _map[visiting.y][visiting.x+1]) {
@@ -71,7 +75,7 @@ uint32_t Heightmap::largest_basins() {
                 to_visit.x = visiting.x+1;
                 to_visit.y = visiting.y;
                 _map[to_visit.y][to_visit.x] = 9;
-                queue.push(std::move(to_visit));
+                _stack.push(std::move(to_visit));
                 basin_size += 1;
             }
             if (visiting.y < _n_row - 1 && 9 != _map[visiting.y+1][visiting.x]) {
@@ -79,7 +83,7 @@ uint32_t Heightmap::largest_basins() {
                 to_visit.x = visiting.x;
                 to_visit.y = visiting.y+1;
                 _map[to_visit.y][to_visit.x] = 9;
-                queue.push(std::move(to_visit));
+                _stack.push(std::move(to_visit));
                 basin_size += 1;
             }
         }

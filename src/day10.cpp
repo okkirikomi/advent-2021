@@ -2,17 +2,14 @@
 
 #include "file.h"
 #include "radix_sort64.h"
-#include "stack.h"
 #include "timer.h"
 
 static const uint8_t INPUT_MAX = 128;
-static const uint8_t STACK_MAX = 64;
 static const uint8_t MAX_INCOMPLETE = 64;
 
 typedef struct Parser {
     void init();
-    void close();
-    bool parse_line(const char* str);
+    bool parse_line(char* buf);
 
     uint32_t error_score() const { return _error_score; }
     uint64_t completion_score();
@@ -21,7 +18,6 @@ private:
     uint32_t _error_score;
     uint64_t _completion_scores[MAX_INCOMPLETE];
     uint8_t _n_incomplete;
-    Stack<char> _stack;
 
 } Parser;
 
@@ -32,75 +28,66 @@ uint64_t Parser::completion_score() {
     return _completion_scores[_n_incomplete/2];
 }
 
-bool Parser::parse_line(const char* str) {
+bool Parser::parse_line(char* str) {
     size_t it = 0;
-    char last;
-    _stack.clear();
-    while (true) {
+    size_t depth = 0;
+    while (str[it] != '\0') {
         switch (str[it]) {
-            case '(': if(!_stack.push('(')) return false; break;
-            case '[': if(!_stack.push('[')) return false; break;
-            case '{': if(!_stack.push('{')) return false; break;
-            case '<': if(!_stack.push('<')) return false; break;
+            case '(':
+            case '[':
+            case '{':
+            case '<':
+                str[depth++] = str[it];
+                break;
             case ')':
-                if (!_stack.pop(last)) return false;
-                if (last != '(') {
+                if (depth == 0 || str[--depth] != '(') {
                     _error_score += 3;
                     return true;
                 }
                 break;
             case ']':
-                if (!_stack.pop(last)) return false;
-                if (last != '[') {
+                if (depth == 0 || str[--depth] != '[') {
                     _error_score += 57;
                     return true;
                 }
                 break;
             case '}':
-                if (!_stack.pop(last)) return false;
-                if (last != '{') {
-                    _error_score += 1197;
-                    return true;
-                }
+                if (depth == 0 || str[--depth] != '{') {
+                 _error_score += 1197;
+                 return true;
+             }
                 break;
             case '>':
-                if (!_stack.pop(last)) return false;
-                if (last != '<') {
+                if (depth == 0 || str[--depth] != '<') {
                     _error_score += 25137;
                     return true;
                 }
                 break;
-
-            case '\0': goto incomplete;
             default: return false;
         }
         ++it;
     }
-incomplete:
     uint64_t completion_score = 0;
-    while(_stack.pop(last)) {
+    while (depth > 0) {
         completion_score *= 5;
-        switch (last) {
+        switch (str[depth-1]) {
             case '(': completion_score += 1; break;
             case '[': completion_score += 2; break;
             case '{': completion_score += 3; break;
             case '<': completion_score += 4; break;
             default: return false;
         }
+        --depth;
     }
     _completion_scores[_n_incomplete] = completion_score;
     if ((++_n_incomplete) == MAX_INCOMPLETE) return false;
-    return true;
-}
 
-void Parser::close() {
-    _stack.destroy();
+    return true;
 }
 
 void Parser::init() {
     _error_score = 0;
     _n_incomplete = 0;
-    _stack.init(STACK_MAX);
 }
 
 int main(int argc, char **argv)
@@ -133,7 +120,6 @@ int main(int argc, char **argv)
     const uint64_t answer2 = parser.completion_score();
 
     file.close();
-    parser.close();
 
     const uint64_t completion_time = timer_stop();
     printf("Day 10 completion time: %" PRIu64 "µs\n", completion_time);

@@ -16,7 +16,7 @@ static const int LINE_FEED = 10;
 typedef struct File {
     bool open(const char* path);
     void close();
-    int readline(char* out, const int buffer_size);
+    off_t readline(char* out, const int buffer_size);
 
 private:
     char* _data;
@@ -28,7 +28,7 @@ void File::close() {
     free(_data);
 }
 
-int File::readline(char* out, const int buffer_size) {
+off_t File::readline(char* out, const int buffer_size) {
     if (out == NULL) return 0;
     if (_it >= _size) return 0;
 
@@ -43,7 +43,7 @@ int File::readline(char* out, const int buffer_size) {
         out[_it-start] = _data[_it];
         ++_it;
     }
-    const int n_read = _it - start + 1;
+    const off_t n_read = _it - start + 1;
     out[_it-start] = '\0';
 
     // go over the line ending

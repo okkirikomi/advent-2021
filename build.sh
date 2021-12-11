@@ -2,7 +2,7 @@
 
 INCLUDE="-I${PWD}/include"
 
-RANGE="1 8"
+RANGE="1 11"
 
 if [ -n "${1+set}" ]; then
   RANGE="$1 $1"
@@ -14,7 +14,7 @@ fi
 
 WARNINGS="-Wextra -Wall -Wshadow -Wstrict-aliasing"
 FLAGS="-std=c++11 -march=native -fno-exceptions -fomit-frame-pointer ${WARNINGS} -O3 -pedantic -pipe"
-# -fverbose-asm -save-temps -DNDEBUG
+# -Wconversion -fverbose-asm -save-temps -DNDEBUG
 
 mkdir -p out
 

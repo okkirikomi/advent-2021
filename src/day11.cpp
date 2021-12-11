@@ -5,21 +5,21 @@
 #include "strtoint.h"
 #include "timer.h"
 
-static const uint8_t INPUT_MAX = 128;
+static const uint8_t INPUT_MAX = 11;
 static const uint8_t OCTO_MAX = 100;
 static const uint8_t SIDE_SIZE = 10;
 static const uint8_t FLASH_THRESHOLD = 9;
 static const uint8_t TOP_IDX = SIDE_SIZE-1;
 static const uint8_t BOTTOM_IDX = (SIDE_SIZE*(SIDE_SIZE-1));
 
-typedef struct Parser {
+// A group of octopuses is called a consortium
+typedef struct Consortium {
     void init();
     void destroy();
     bool add_line(const char* str);
     uint16_t step_n(const uint16_t n_steps);
     uint16_t flashes() const { return _n_flashes; }
     uint16_t step_until_sync();
-
 
 private:
     bool add_visit(const uint8_t n);
@@ -28,9 +28,9 @@ private:
     uint8_t _n_row;
     uint16_t _n_flashes;
 
-} Parser;
+} Consortium;
 
-bool Parser::add_line(const char* str) {
+bool Consortium::add_line(const char* str) {
     uint8_t it = 0;
     if (_n_row >= SIDE_SIZE) return false;
     while (true) {
@@ -48,17 +48,17 @@ bool Parser::add_line(const char* str) {
     return true;
 }
 
-void Parser::init() {
+void Consortium::init() {
     _n_row = 0;
     _n_flashes = 0;
     _stack.init(128);
 }
 
-void Parser::destroy() {
+void Consortium::destroy() {
     _stack.destroy();
 }
 
-bool Parser::add_visit(const uint8_t n) {
+bool Consortium::add_visit(const uint8_t n) {
     // already flashed this turn
     if (_octopuses[n] == 0) return true;
     _octopuses[n] += 1;
@@ -66,7 +66,7 @@ bool Parser::add_visit(const uint8_t n) {
     return true;
 }
 
-uint16_t Parser::step_until_sync() {
+uint16_t Consortium::step_until_sync() {
     // we already did 100
     uint16_t steps = 100;
     steps += step_n(65535); // loop for as long as we can
@@ -74,7 +74,7 @@ uint16_t Parser::step_until_sync() {
     return steps;
 }
 
-uint16_t Parser::step_n(const uint16_t n_steps) {
+uint16_t Consortium::step_n(const uint16_t n_steps) {
     if (_n_row != SIDE_SIZE) return false;
 
     uint16_t step;
@@ -134,8 +134,8 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    Parser parser;
-    parser.init();
+    Consortium consortium;
+    consortium.init();
 
     File file;
     if(file.open(argv[1]) == false) {
@@ -145,18 +145,18 @@ int main(int argc, char **argv)
 
     char str[INPUT_MAX];
     while (file.readline(str, INPUT_MAX)) {
-        if (!parser.add_line(str)) {
+        if (!consortium.add_line(str)) {
             printf("Error with input.\n");
             return -1;
         }
     }
 
-    if (parser.step_n(100) != 100) return -1;
-    const uint16_t answer1 = parser.flashes();
-    const uint16_t answer2 = parser.step_until_sync();
+    if (consortium.step_n(100) != 100) return -1;
+    const uint16_t answer1 = consortium.flashes();
+    const uint16_t answer2 = consortium.step_until_sync();
 
     file.close();
-    parser.destroy();
+    consortium.destroy();
 
     const uint64_t completion_time = timer_stop();
     printf("Day 11 completion time: %" PRIu64 "µs\n", completion_time);

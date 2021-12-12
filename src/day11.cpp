@@ -33,12 +33,13 @@ private:
 bool Consortium::add_line(const char* str) {
     uint8_t it = 0;
     if (_n_row >= SIDE_SIZE) return false;
+    const uint8_t line_idx = _n_row*SIDE_SIZE;
     while (true) {
         if (str[it] == '\0') {
             break;
         } else if (ascii_isdigit(str[it])) {
             if (it >= SIDE_SIZE) return false;
-            _octopuses[_n_row*SIDE_SIZE + it] = str[it] - '0';
+            _octopuses[line_idx + it] = str[it] - '0';
         } else {
             return false;
         }
@@ -84,7 +85,7 @@ uint16_t Consortium::step_n(const uint16_t n_steps) {
         for (uint8_t i = 0; i < OCTO_MAX; ++i) {
             _octopuses[i] += 1;
             if(_octopuses[i] > FLASH_THRESHOLD) {
-                if(!_stack.push(i)) return 0;
+                _stack.push(i);
             }
         }
         // handle flashes

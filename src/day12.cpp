@@ -9,6 +9,8 @@ static const uint8_t INPUT_MAX = 16;
 static const uint8_t CONNECTIONS_MAX = 16;
 
 // enough indexes for 2 wide alphabet strings + start, end, null
+// BETTER, check if using the smallest possible array
+// and having a function to map to an index is faster
 static const uint16_t NODES_MAX = 26 * 26 + 3;
 static const uint16_t START = NODES_MAX - 1;
 static const uint16_t END = NODES_MAX - 2;
@@ -22,13 +24,6 @@ bool ascii_islarge(const uint8_t c) {
 uint16_t str_to_node(const char str[2]) {
     return (str[0] - 65) + (str[1] - 65) * 26;
 }
-
-// TODO, check if this struct is faster
-typedef struct Cave {
-    bool big;
-    uint8_t n_connections;
-    uint16_t connections[CONNECTIONS_MAX];
-} Cave;
 
 typedef struct Path {
     Path() : visited{NONE}, n_visited(0), small_twice(false) {};
@@ -60,96 +55,55 @@ typedef struct Path {
 } Path;
 
 typedef struct Map {
+    Map() : _connections{NONE}, _connection_count{0} { }
     void init();
     void destroy();
 
     bool add_node(const char* str);
-    uint16_t path_count();
-    uint32_t path_count_two();
+    bool calc_paths();
+
+    uint16_t simple_visit_count;
+    uint32_t part_two_count;
 
 private:
     bool add_connection(const uint16_t from, const uint16_t to);
     bool _big_caves[NODES_MAX];
     uint16_t _connections[NODES_MAX][CONNECTIONS_MAX];
+    uint8_t _connection_count[NODES_MAX];
     Stack<Path> _to_continue;
 
 } Map;
 
 void Map::init() {
-    for (uint16_t i = 0; i < NODES_MAX; ++i) {
-        _connections[i][0] = NONE;
-    }
     _to_continue.init(32);
+    simple_visit_count = 0;
+    part_two_count = 0;
 }
 
 void Map::destroy() {
     _to_continue.destroy();
 }
 
-// BETTER, just keep the # of connections instead of iterating
 bool Map::add_connection(const uint16_t from, const uint16_t to) {
-    for (uint16_t i = 0; i < CONNECTIONS_MAX; ++i) {
-        if (_connections[from][i] == NONE) {
-            _connections[from][i] = to;
-            if (i < CONNECTIONS_MAX - 1) _connections[from][i+1] = NONE;
-            return true;
-        }
-    }
-    return false;
+    uint8_t& max = _connection_count[from];
+    if (max == CONNECTIONS_MAX) return false;
+
+    _connections[from][max] = to;
+    max += 1;
+    return true;
 }
 
-uint16_t Map::path_count() {
-    uint16_t n_paths = 0;
-
+// BETTER, find a way to avoid all these struct Path copies
+bool Map::calc_paths() {
     // all paths begin at START
     Path path;
     path.visited[0] = START;
     path.n_visited = 1;
 
-    for (uint16_t i = 0; i < CONNECTIONS_MAX; ++i) {
-        if (_connections[START][i] == NONE) break;
+    for (uint16_t i = 0; i < _connection_count[START]; ++i) {
         Path new_path = path;
         new_path.add_visited(_connections[START][i]);
-        _to_continue.push(std::move(new_path));
-    }
-
-    // continue all possible paths
-    while (_to_continue.pop(path)) {
-        const uint16_t current_node = path.last();
-        // try to visit all connected nodes
-        for (uint16_t i = 0; i < CONNECTIONS_MAX; ++i) {
-            const uint16_t to_visit = _connections[current_node][i];
-            if (to_visit == NONE) break;
-            if (to_visit == END) {
-                n_paths += 1;
-                continue;
-            }
-            // can't visit small caves more than once
-            if (!_big_caves[to_visit]) {
-                if (path.is_visited(to_visit)) continue;
-            }
-            Path new_path = path;
-            new_path.add_visited(to_visit);
-            _to_continue.push(std::move(new_path));
-        }
-    }
-    return n_paths;
-}
-
-// same as part one but we can visit ONE small cave up to two times
-uint32_t Map::path_count_two() {
-    uint32_t n_paths = 0;
-
-    // all paths begin at START
-    Path path;
-    path.visited[0] = START;
-    path.n_visited = 1;
-
-    for (uint32_t i = 0; i < CONNECTIONS_MAX; ++i) {
-        if (_connections[START][i] == NONE) break;
-        Path new_path = path;
-        new_path.add_visited(_connections[START][i]);
-        _to_continue.push(std::move(new_path));
+        _to_continue.push(new_path);
     }
 
     // continue all possible paths
@@ -158,11 +112,12 @@ uint32_t Map::path_count_two() {
         const bool small_twice = path.small_twice;
 
         // try to visit all connected nodes
-        for (uint32_t i = 0; i < CONNECTIONS_MAX; ++i) {
+        const uint8_t max = _connection_count[current_node];
+        for (uint16_t i = 0; i < max; ++i) {
             const uint32_t to_visit = _connections[current_node][i];
-            if (to_visit == NONE) break;
             if (to_visit == END) {
-                n_paths += 1;
+                part_two_count += 1;
+                if (small_twice == false) simple_visit_count += 1;
                 continue;
             }
 
@@ -170,18 +125,18 @@ uint32_t Map::path_count_two() {
             if (!_big_caves[to_visit] && path.is_visited(to_visit)) {
                 if (small_twice == false) {
                     Path new_path = path;
-                    new_path.add_visited(to_visit);
+                    if(!new_path.add_visited(to_visit)) return false;
                     new_path.small_twice = true;
-                    _to_continue.push(std::move(new_path));
+                    _to_continue.push(new_path);
                 }
                 continue;
             }
             Path new_path = path;
-            new_path.add_visited(to_visit);
-            _to_continue.push(std::move(new_path));
+            if(!new_path.add_visited(to_visit)) return false;
+            _to_continue.push(new_path);
         }
     }
-    return n_paths;
+    return true;
 }
 
 bool Map::add_node(const char* str) {
@@ -249,8 +204,6 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    //print_all();
-
     char str[INPUT_MAX];
     while (file.readline(str, INPUT_MAX)) {
         if (!map.add_node(str)) {
@@ -259,8 +212,10 @@ int main(int argc, char **argv)
         }
     }
 
-    const uint16_t answer1 = map.path_count();
-    const uint32_t answer2 = map.path_count_two();
+    map.calc_paths();
+
+    const uint16_t answer1 = map.simple_visit_count;
+    const uint32_t answer2 = map.part_two_count;
 
     file.close();
     map.destroy();

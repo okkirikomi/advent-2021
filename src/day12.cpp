@@ -8,13 +8,12 @@
 static const uint8_t INPUT_MAX = 16;
 static const uint8_t CONNECTIONS_MAX = 16;
 
-// enough indexes for 2 wide alphabet strings + start, end, null
 // BETTER, check if using the smallest possible array
-// and having a function to map to an index is faster
-static const uint16_t NODES_MAX = 26 * 26 + 3;
+// and having a function to map to an index is faster.
+// Currently, most of the array is unused, cache is wasted.
+static const uint16_t NODES_MAX = 26 * 26 + 2;
 static const uint16_t START = NODES_MAX - 1;
 static const uint16_t END = NODES_MAX - 2;
-static const uint16_t NONE = NODES_MAX - 3;
 
 bool ascii_islarge(const uint8_t c) {
     return ((c >= 'A' && c <= 'Z') ? 1 : 0);
@@ -25,63 +24,30 @@ uint16_t str_to_node(const char str[2]) {
     return (str[0] - 65) + (str[1] - 65) * 26;
 }
 
-typedef struct Path {
-    Path() : visited{NONE}, n_visited(0), small_twice(false) {};
-
-    uint16_t visited[CONNECTIONS_MAX];
-    uint8_t n_visited;
-    bool small_twice;
-
-    bool add_visited(const uint16_t add) {
-        if (n_visited == CONNECTIONS_MAX) return false;
-        visited[n_visited] = add;
-        n_visited += 1;
-        return true;
-    }
-
-    // small enough that we can just use an array
-    // no need for an hash table
-    bool is_visited(const uint16_t node) const {
-        for (uint16_t i = 0; i < n_visited; ++i) {
-            if (visited[i] == node) return true;
-        }
-        return false;
-    }
-
-    uint16_t last() const {
-        assert(n_visited > 0);
-        return visited[n_visited-1];
-    }
-} Path;
-
 typedef struct Map {
-    Map() : _connections{NONE}, _connection_count{0} { }
+    Map() : _connection_count{0}, _visit_count{0} { }
     void init();
-    void destroy();
 
     bool add_node(const char* str);
-    bool calc_paths();
+    void calc_paths();
 
     uint16_t simple_visit_count;
     uint32_t part_two_count;
 
 private:
+    void recurse_count(const uint16_t current_node, const bool second_visit);
     bool add_connection(const uint16_t from, const uint16_t to);
+    // BETTER, check if having an array of structs containing these is faster
     bool _big_caves[NODES_MAX];
     uint16_t _connections[NODES_MAX][CONNECTIONS_MAX];
     uint8_t _connection_count[NODES_MAX];
-    Stack<Path> _to_continue;
+    uint8_t _visit_count[NODES_MAX];
 
 } Map;
 
 void Map::init() {
-    _to_continue.init(32);
     simple_visit_count = 0;
     part_two_count = 0;
-}
-
-void Map::destroy() {
-    _to_continue.destroy();
 }
 
 bool Map::add_connection(const uint16_t from, const uint16_t to) {
@@ -93,50 +59,30 @@ bool Map::add_connection(const uint16_t from, const uint16_t to) {
     return true;
 }
 
-// BETTER, find a way to avoid all these struct Path copies
-bool Map::calc_paths() {
-    // all paths begin at START
-    Path path;
-    path.visited[0] = START;
-    path.n_visited = 1;
-
-    for (uint16_t i = 0; i < _connection_count[START]; ++i) {
-        Path new_path = path;
-        new_path.add_visited(_connections[START][i]);
-        _to_continue.push(new_path);
+void Map::recurse_count(const uint16_t current_node, const bool second_visit) {
+    if (current_node == END) {
+        part_two_count += 1;
+        if (second_visit == false) simple_visit_count += 1;
+        return;
     }
+    uint8_t& visit_count = _visit_count[current_node];
+    visit_count += 1;
 
-    // continue all possible paths
-    while (_to_continue.pop(path)) {
-        const uint32_t current_node = path.last();
-        const bool small_twice = path.small_twice;
+    for (uint16_t i = 0; i < _connection_count[current_node]; ++i) {
+        const uint32_t& to_visit = _connections[current_node][i];
 
-        // try to visit all connected nodes
-        const uint8_t max = _connection_count[current_node];
-        for (uint16_t i = 0; i < max; ++i) {
-            const uint32_t to_visit = _connections[current_node][i];
-            if (to_visit == END) {
-                part_two_count += 1;
-                if (small_twice == false) simple_visit_count += 1;
-                continue;
-            }
-
-            // each path is allowed to visit a small cave two times ONCE
-            if (!_big_caves[to_visit] && path.is_visited(to_visit)) {
-                if (small_twice == false) {
-                    Path new_path = path;
-                    if(!new_path.add_visited(to_visit)) return false;
-                    new_path.small_twice = true;
-                    _to_continue.push(new_path);
-                }
-                continue;
-            }
-            Path new_path = path;
-            if(!new_path.add_visited(to_visit)) return false;
-            _to_continue.push(new_path);
+        if (_visit_count[to_visit] > 0 && !_big_caves[to_visit]) {
+            if (!second_visit) recurse_count(to_visit, true);
+            continue;
         }
+
+        recurse_count(to_visit, second_visit);
     }
-    return true;
+    visit_count -= 1;
+}
+
+void Map::calc_paths() {
+    recurse_count(START, false);
 }
 
 bool Map::add_node(const char* str) {
@@ -205,7 +151,7 @@ int main(int argc, char **argv)
     }
 
     char str[INPUT_MAX];
-    while (file.readline(str, INPUT_MAX)) {
+    while (file.readline(str, INPUT_MAX) > 5) {
         if (!map.add_node(str)) {
             printf("Error with input.\n");
             return -1;
@@ -218,7 +164,6 @@ int main(int argc, char **argv)
     const uint32_t answer2 = map.part_two_count;
 
     file.close();
-    map.destroy();
 
     const uint64_t completion_time = timer_stop();
     printf("Day 12 completion time: %" PRIu64 "µs\n", completion_time);

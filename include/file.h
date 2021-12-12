@@ -28,6 +28,8 @@ void File::close() {
     free(_data);
 }
 
+// fill buffer until new line is encountered
+// return number of chars read
 off_t File::readline(char* out, const int buffer_size) {
     if (out == NULL) return 0;
     if (_it >= _size) return 0;

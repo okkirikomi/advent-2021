@@ -91,8 +91,8 @@ bool Paper::fold(const char* str) {
         }
         _actual_y = value;
     } else {
-        for (uint16_t x = _actual_x - 1; x > value; --x) {
-            for (uint16_t y = 0; y < _actual_y; ++y) {
+        for (uint16_t y = 0; y < _actual_y; ++y) {
+            for (uint16_t x = _actual_x - 1; x > value; --x) {
                 _dots[y][_actual_x-x-1] += _dots[y][x];
             }
         }

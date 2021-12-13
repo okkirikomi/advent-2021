@@ -6,10 +6,10 @@ I write simple and fast code, making more suitable wheels when needed. No CPU sp
 * Better than naive algorithms when needed.
 * Try to optimize cache access.
 * Avoid as much C++ Standard Library or trendy paradigms as possible.
-* Write readable and maintainable code.
+* Readable and maintainable code.
 * Keep it simple.
 
-Sure, this doesn't change much for the small size of these problems. Still this is usually about 2-4x faster than other C or C++ solutions available simply by avoiding multiple allocations when growing vectors or smarter I/O.
+Sure, this doesn't change much for the small size of these problems. Still this is at least 2-4x faster than other C or C++ solutions available simply by avoiding multiple allocations when growing vectors or smarter I/O. Many of these problems spend most of their time in the syscall to read the input file on disk.
 
 Tested on a Linux machine with GCC 7.5.0. Should work on anything POSIX with a compiler supporting C++11. Or at least with minimal plumbing.
 

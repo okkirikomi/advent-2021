@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <unordered_set>
 
 #include "file.h"
 #include "strtoint.h"
@@ -8,51 +9,74 @@
 static const uint8_t INPUT_MAX = 32;
 static const uint16_t MAX_X = 1311;
 static const uint16_t MAX_Y = 895;
-static const uint32_t MAX_DOTS = MAX_X * MAX_Y;
+static const uint32_t MAX_DOTS = 866;
+
+typedef struct Dot {
+    uint16_t x;
+    uint16_t y;
+    bool operator== (const Dot& d) const {
+        return x == d.x && y == d.y;
+    }
+} Dot;
+
+struct hash_func {
+    size_t operator() (const Dot& d) const {
+        return d.x + d.y * MAX_X;
+    }
+};
 
 typedef struct Paper {
     void init();
 
     bool add_dot(const char* str);
     bool fold(const char* str);
-
-    void print_all();
-
-
-    uint32_t visible_count() const;
+    void print_all() const;
+    uint32_t visible_count();
 
 private:
-    uint8_t _dots[MAX_Y][MAX_X];
+    Dot _dots[MAX_DOTS];
     uint16_t _actual_x;
     uint16_t _actual_y;
+    uint16_t _n_points;
+    // we use a set to remove duplicate dots
+    // BETTER, don't use std
+    std::unordered_set<Dot, hash_func> _set;
 
 } Paper;
 
 void Paper::init() {
-    memset(_dots, 0, sizeof(_dots));
     _actual_x = MAX_X;
     _actual_y = MAX_Y;
+    _n_points = 0;
+    _set.reserve(MAX_DOTS);
 }
 
-// FIXME, keep the count as we are folding?
-uint32_t Paper::visible_count() const {
-    uint32_t count = 0;
-    for (uint16_t y = 0; y < _actual_y; ++y)
-    for (uint16_t x = 0; x < _actual_x; ++x)
-    if (_dots[y][x] != 0) ++count;
-
-    return count;
-}
-
-void Paper::print_all() {
-    for (uint16_t y = 0; y < _actual_y; ++y) {
-        for (uint16_t x = 0; x < _actual_x; ++x) {
-            if (_dots[y][x] == 0) printf(".");
-            else printf("#");
-        }
-        printf("\n");
+uint32_t Paper::visible_count() {
+    for (uint16_t i = 0; i < _n_points; ++i) {
+        _set.insert(_dots[i]);
     }
-    printf("\n");
+    return _set.size();
+}
+
+void Paper::print_all() const {
+    // build the buffer to display
+    size_t size = sizeof(char)*_actual_y*_actual_x + _actual_y + 1;
+    char* buffer = (char*) malloc(size);
+    memset(buffer, '.', size);
+    // set the new lines
+    for (uint16_t y = 0; y < _actual_y; ++y) {
+        buffer[(_actual_x)+y*(_actual_x+1)] = '\n';
+    }
+    // set the dots
+    for (uint16_t i = 0; i < _n_points; ++i) {
+        if (_dots[i].x >= _actual_x || _dots[i].y >= _actual_y) continue;
+        const uint16_t it = _dots[i].x+_dots[i].y*(_actual_x+1);
+        buffer[it] = '#';
+    }
+    // we're done
+    buffer[size-1] = '\0';
+    printf("%s\n", buffer);
+    free(buffer);
 }
 
 // expecting:
@@ -82,19 +106,17 @@ bool Paper::fold(const char* str) {
         ++it;
     }
 
-    // FIXME, make this simpler?
+    // BETTER, check if removing the duplicate dots is faster
     if (axis == 'y') {
-        for (uint16_t y = _actual_y - 1; y > value; --y) {
-            for (uint16_t x = 0; x < _actual_x; ++x) {
-                _dots[_actual_y-y-1][x] += _dots[y][x];
-            }
+        for (uint16_t i = 0; i < _n_points; ++i) {
+            if (_dots[i].y <= value) continue;
+            _dots[i].y = value - (_dots[i].y - value);
         }
         _actual_y = value;
     } else {
-        for (uint16_t y = 0; y < _actual_y; ++y) {
-            for (uint16_t x = _actual_x - 1; x > value; --x) {
-                _dots[y][_actual_x-x-1] += _dots[y][x];
-            }
+        for (uint16_t i = 0; i < _n_points; ++i) {
+            if (_dots[i].x <= value) continue;
+            _dots[i].x = value - (_dots[i].x - value);
         }
         _actual_x = value;
     }
@@ -104,7 +126,6 @@ bool Paper::fold(const char* str) {
 bool Paper::add_dot(const char* str) {
     size_t it = 0;
     uint16_t value[2] = { 0 };
-
     for (uint16_t i = 0; i < 2; ++i) {
         while (str[it] != '\0') {
             if (str[it] == ',') {
@@ -120,7 +141,10 @@ bool Paper::add_dot(const char* str) {
         }
     }
 
-    _dots[value[1]][value[0]] = 1;
+    if (_n_points == MAX_DOTS) return false;
+    _dots[_n_points].x = value[0];
+    _dots[_n_points].y = value[1];
+    ++_n_points;
     return true;
 }
 
@@ -161,11 +185,14 @@ int main(int argc, char **argv)
 
     file.close();
 
-    const uint64_t completion_time = timer_stop();
-    printf("Day 13 completion time: %" PRIu64 "µs\n", completion_time);
     printf("Answer 1 = %i\n", answer1);
     printf("Answer 2 =\n");
     paper.print_all();
+
+    // For this problem, printing is part of the answer and might not be trivial,
+    // so we stop timer after.
+    const uint64_t completion_time = timer_stop();
+    printf("Day 13 completion time: %" PRIu64 "µs\n", completion_time);
 
     return 0;
 }

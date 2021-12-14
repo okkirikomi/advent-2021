@@ -1,4 +1,3 @@
-#include <unordered_map>
 #include <stdio.h>
 #include <string.h>
 
@@ -30,15 +29,13 @@ private:
     uint64_t _letter_count[ALPHABET_SIZE];
     uint64_t _pairs_count[MAX_PAIRS];
 
-    // FIXME don't use std, just use an array indexed with our hash_func
-    std::unordered_map<uint16_t, char> _rules;
-
+    char _rules[MAX_PAIRS];
 } Polymer;
 
 void Polymer::init() {
     memset(_letter_count, 0, sizeof(_letter_count));
     memset(_pairs_count, 0, sizeof(_pairs_count));
-    _rules.reserve(100);
+    memset(_rules, 0, sizeof(_rules));
 }
 
 void Polymer::destroy() {
@@ -79,13 +76,11 @@ bool Polymer::add_template(const char* str) {
 // they all have the same size
 // HH -> K
 bool Polymer::add_rule(const char* str) {
-    char to;
     uint8_t it = 0;
     while (str[it] != 0) ++it;
     if (it < 6) return false;
 
-    to = str[6];
-    _rules.emplace(hash(str[0], str[1]), to);
+    _rules[hash(str[0], str[1])] = str[6];
     return true;
 }
 
@@ -100,20 +95,21 @@ void Polymer::step_n(const uint8_t n) {
             if (count == 0) continue;
 
             // check if we have a rule for that pair
-            auto found = _rules.find(i);
-            if (found == _rules.end()) continue;
+            const char c = _rules[i];
+            if (c == 0) continue;
 
-            const uint16_t a = (i % ALPHABET_SIZE);
-            const uint16_t b = (i / ALPHABET_SIZE);
+            // reverse hash to find the two associated chars
+            const char a = (i % ALPHABET_SIZE);
+            const char b = (i / ALPHABET_SIZE);
 
             // remove old pair and create two new ones,
             // the new value added between the previouses
             _pairs_count[i] = 0;
-            new_pairs[hash(a +'A', found->second)] += count;
-            new_pairs[hash(found->second, b +'A')] += count;
+            new_pairs[hash(a +'A', c)] += count;
+            new_pairs[hash(c, b +'A')] += count;
 
             // and keep up our total letters count
-            _letter_count[found->second - 'A'] += count;
+            _letter_count[c - 'A'] += count;
         }
 
         // FIXME could be faster with some SIMD shenanigans
@@ -167,7 +163,7 @@ int main(int argc, char **argv)
     polymer.destroy();
 
     const uint64_t completion_time = timer_stop();
-    printf("Day 13 completion time: %" PRIu64 "µs\n", completion_time);
+    printf("Day 14 completion time: %" PRIu64 "µs\n", completion_time);
 
     printf("Answer 1 = %" PRIu64 "\n", answer1);
     printf("Answer 1 = %" PRIu64 "\n", answer2);

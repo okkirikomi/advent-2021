@@ -185,7 +185,7 @@ int main(int argc, char **argv)
 
     file.close();
 
-    printf("Answer 1 = %i\n", answer1);
+    printf("Answer 1 = %u\n", answer1);
     printf("Answer 2 =\n");
     paper.print_all();
 

@@ -168,8 +168,8 @@ int main(int argc, char **argv)
 
     const uint64_t completion_time = timer_stop();
     printf("Day 8 completion time: %" PRIu64 "µs\n", completion_time);
-    printf("Answer 1 = %i\n", answer1);
-    printf("Answer 2 = %i\n", answer2);
+    printf("Answer 1 = %u\n", answer1);
+    printf("Answer 2 = %u\n", answer2);
 
     return 0;
 }

@@ -12,7 +12,7 @@ if [ -n "${2+set}" ]; then
   RANGE="$1 $2"
 fi
 
-WARNINGS="-Wextra -Wall -Wshadow -Wstrict-aliasing"
+WARNINGS="-Wextra -Wall -Wshadow -Wstrict-aliasing -Wformat -Wformat-signedness"
 FLAGS="-std=c++11 -march=native -fno-exceptions -fomit-frame-pointer ${WARNINGS} -O3 -pedantic -pipe"
 # -Wconversion -fverbose-asm -save-temps -DNDEBUG
 

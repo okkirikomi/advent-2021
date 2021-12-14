@@ -1,4 +1,3 @@
-#include <array>
 #include <unordered_map>
 #include <stdio.h>
 #include <string.h>
@@ -10,21 +9,11 @@
 
 static const uint8_t INPUT_MAX = 32;
 static const uint8_t ALPHABET_SIZE = 26;
-static const uint64_t MAX_POLYMER_SIZE = UINT32_MAX;
+static const uint16_t MAX_PAIRS = ALPHABET_SIZE * ALPHABET_SIZE;
 
-struct equal_to {  
-    bool operator()(const char str_a[2], const char str_b[2]) const  
-    {
-        return str_a[0] == str_b[0] && str_a[1] == str_b[1];
-    }  
-};
-
-struct hash_func {
-    int operator()(const std::array<char, 2> str) const
-    {
-        return str[0] + str[1] * ALPHABET_SIZE;
-    }
-};
+uint16_t hash(const char a, const char b) {
+    return (a - 'A') + (b - 'A') * ALPHABET_SIZE;
+}
 
 typedef struct Polymer {
     void init();
@@ -34,100 +23,103 @@ typedef struct Polymer {
 
     void step_n(const uint8_t n);
 
-    uint64_t score();
+    uint64_t score() const;
 
 private:
-    void shit_insert(uint64_t at, char c);
-    uint64_t _letter_count[ALPHABET_SIZE];
-    char* _string;
-    uint64_t _it;
 
-    // FIXME don't use std
-    std::unordered_map<std::array<char, 2>, char, hash_func> _rules;
+    uint64_t _letter_count[ALPHABET_SIZE];
+    uint64_t _pairs_count[MAX_PAIRS];
+
+    // FIXME don't use std, just use an array indexed with our hash_func
+    std::unordered_map<uint16_t, char> _rules;
 
 } Polymer;
 
 void Polymer::init() {
     memset(_letter_count, 0, sizeof(_letter_count));
-    _string = (char*) malloc(sizeof(char)*MAX_POLYMER_SIZE);
-    _it = 0;
+    memset(_pairs_count, 0, sizeof(_pairs_count));
     _rules.reserve(100);
 }
 
 void Polymer::destroy() {
-    free(_string);
+    // nothing
 }
 
-uint64_t Polymer::score() {
-    radix_sort64(_letter_count, ALPHABET_SIZE);
+uint64_t Polymer::score() const {
+    uint64_t sorted_count[ALPHABET_SIZE];
+    memcpy(sorted_count, _letter_count, sizeof(_letter_count));
+    radix_sort64(sorted_count, ALPHABET_SIZE);
 
     // highest will always be last position but
     // if we don't have 26 letters, smallest non zero
     // might be further up
     for (uint8_t i = 0; i < ALPHABET_SIZE; ++i) {
-        if (_letter_count[i] == 0) continue;
-        return _letter_count[ALPHABET_SIZE - 1] - _letter_count[i];
+        if (sorted_count[i] == 0) continue;
+        return sorted_count[ALPHABET_SIZE - 1] - sorted_count[i];
     }
     return 0;
 }
 
+// Expected sequence:
+// BSONBHNSSCFPSFOPHKPK
 bool Polymer::add_template(const char* str) {
     uint8_t it = 0;
     while (str[it] != 0) {
-        _string[it] = str[it];
-        _letter_count[str[it]-65] += 1; // FIXME make safe
+        const uint8_t ascii_0 = str[it]-65;
+        if (ascii_0 >= ALPHABET_SIZE) return false;
+        _letter_count[ascii_0] += 1;
+
+        if (str[it+1] == 0) break;
+        _pairs_count[hash(str[it], str[it+1])] += 1;
         ++it;
     }
-    _it = it;
     return true;
 }
 
 // they all have the same size
 // HH -> K
 bool Polymer::add_rule(const char* str) {
-    std::array<char,2> base;
     char to;
     uint8_t it = 0;
-
     while (str[it] != 0) ++it;
     if (it < 6) return false;
 
-    base[0] = str[0];
-    base[1] = str[1];
     to = str[6];
-
-    printf("%c%c -> %c\n", base[0], base[1], to);
-
-    _rules.emplace(base, to);
+    _rules.emplace(hash(str[0], str[1]), to);
     return true;
 }
 
-// FIXME, implement string as a rope and don't do this garbage
-void Polymer::shit_insert(uint64_t at, char c) {
-    //printf("%lu %c\n", at, c);
-    char tmp = _string[at];
-    _it += 1;
-    while (at < _it) {
-        tmp = _string[at];
-        _string[at] = c;
-        c = tmp;
-        ++at;
-    }
-}
-
 void Polymer::step_n(const uint8_t n) {
-    std::array<char, 2> key;
+    // Need a temp array to not mess up with our count when iterating
+    uint64_t new_pairs[MAX_PAIRS] = { 0 };
     for (uint8_t step = 0; step < n; ++step) {
-        printf("STEP %u %lu\n", step, _it);
-        for (uint64_t it = 0; it < _it - 1; ++it) {
-            key[0] = _string[it];
-            key[1] = _string[it+1];
-            auto found = _rules.find(key);
+        // iterate over all possible pairs
+        for(uint16_t i = 0; i < MAX_PAIRS; ++i) {
+            // skip if we have none
+            const uint64_t count = _pairs_count[i];
+            if (count == 0) continue;
+
+            // check if we have a rule for that pair
+            auto found = _rules.find(i);
             if (found == _rules.end()) continue;
 
-            shit_insert(it+1, found->second);
-            _letter_count[found->second-65] += 1;
-            ++it;
+            const uint16_t a = (i % ALPHABET_SIZE);
+            const uint16_t b = (i / ALPHABET_SIZE);
+
+            // remove old pair and create two new ones,
+            // the new value added between the previouses
+            _pairs_count[i] = 0;
+            new_pairs[hash(a +'A', found->second)] += count;
+            new_pairs[hash(found->second, b +'A')] += count;
+
+            // and keep up our total letters count
+            _letter_count[found->second - 'A'] += count;
+        }
+
+        // FIXME could be faster with some SIMD shenanigans
+        for(uint16_t i = 0; i < MAX_PAIRS; ++i) {
+            _pairs_count[i] += new_pairs[i];
+            new_pairs[i] = 0;
         }
     }
 }
@@ -168,9 +160,8 @@ int main(int argc, char **argv)
     const uint64_t answer1 = polymer.score();
 
     // need 40 steps total
-    //polymer.step_n(30);
+    polymer.step_n(30);
     const uint64_t answer2 = polymer.score();
-
 
     file.close();
     polymer.destroy();

@@ -19,17 +19,14 @@ typedef struct Polymer {
     void destroy();
     bool add_rule(const char* str);
     bool add_template(const char* str);
-
     void step_n(const uint8_t n);
-
     uint64_t score() const;
 
 private:
-
     uint64_t _letter_count[ALPHABET_SIZE];
     uint64_t _pairs_count[MAX_PAIRS];
-
     char _rules[MAX_PAIRS];
+
 } Polymer;
 
 void Polymer::init() {
@@ -62,7 +59,7 @@ uint64_t Polymer::score() const {
 bool Polymer::add_template(const char* str) {
     uint8_t it = 0;
     while (str[it] != 0) {
-        const uint8_t ascii_0 = str[it]-65;
+        const uint8_t ascii_0 = str[it] - 'A';
         if (ascii_0 >= ALPHABET_SIZE) return false;
         _letter_count[ascii_0] += 1;
 
@@ -112,7 +109,7 @@ void Polymer::step_n(const uint8_t n) {
             _letter_count[c - 'A'] += count;
         }
 
-        // FIXME could be faster with some SIMD shenanigans
+        // BETTER could be faster with some SIMD shenanigans
         for(uint16_t i = 0; i < MAX_PAIRS; ++i) {
             _pairs_count[i] += new_pairs[i];
             new_pairs[i] = 0;

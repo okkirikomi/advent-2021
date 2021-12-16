@@ -8,6 +8,7 @@
 
 static const uint16_t INPUT_MAX = 2048;
 static const uint16_t MAX_BITS = 1366 * 4;
+static const uint8_t SUB_RESULTS_MAX = 64;
 
 typedef struct Transmission {
     void init();
@@ -88,12 +89,12 @@ uint64_t Transmission::parse_packet(uint64_t* result) {
     read += 3;
     _version_sum += version;
 
-    uint8_t type;
-    if (!read_n(3, &type)) return read;
+    uint8_t packet_type;
+    if (!read_n(3, &packet_type)) return read;
     read += 3;
 
     // bail out as soon as possible if we have a type 4
-    if (type == 4) {
+    if (packet_type == 4) {
         uint8_t n_read = parse_litteral(&packet_value);
         read += n_read;
         *result = packet_value;
@@ -103,7 +104,7 @@ uint64_t Transmission::parse_packet(uint64_t* result) {
     // otherwise, we got an operator packet
     // let's retrieve all the sub packets first
 
-    uint64_t sub_results[64];
+    uint64_t sub_results[SUB_RESULTS_MAX];
     uint8_t n_results = 0;
 
     uint8_t length_type_id;
@@ -111,7 +112,7 @@ uint64_t Transmission::parse_packet(uint64_t* result) {
     read += 1;
 
     if (length_type_id == 0) {
-        // type 0
+        // length type 0
         // 15 bits number indicates how many bits are in the sub packets
         uint16_t length;
         if(!read_nn(15, &length)) return read;
@@ -120,24 +121,24 @@ uint64_t Transmission::parse_packet(uint64_t* result) {
         uint16_t total = 0;
         while (total < length) {
             total += parse_packet(&sub_results[n_results]);
-            ++n_results; // FIXME, not safe
+            if (n_results++ == SUB_RESULTS_MAX) return read;
         }
         read += total;
     } else { 
-        // type 1
+        // length type 1
         // 11 bits number indicates how many sub packets there are
         uint16_t length;
         if(!read_nn(11, &length)) return read;
         read += 11;
         while (length > 0) {
             read += parse_packet(&sub_results[n_results]);
-            ++n_results; // FIXME, not safe
+            if (n_results++ == SUB_RESULTS_MAX) return read;
             length -= 1;
         }
     }
 
     // Now calculate the packet value according to the operator
-    switch (type) {
+    switch (packet_type) {
         case 0:
             for (uint8_t i = 0; i < n_results; ++i)
                 packet_value += sub_results[i];

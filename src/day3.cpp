@@ -9,9 +9,6 @@ static const size_t LINE_LENGTH = 13;
 static const size_t INPUT_LENGTH = LINE_LENGTH-1;
 static const int REPORT_MAX_LENGTH = 1000;
 
-// Couldn't easily make a faster bitset than std for 1000 witdh
-// Would be simple to popcount for anything fitting 64 bits
-// BETTER - improve this
 typedef std::bitset<REPORT_MAX_LENGTH> diagnostic_bitset;
 
 static int most_at_bit(const diagnostic_bitset& line, const size_t n_lines) {

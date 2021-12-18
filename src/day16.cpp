@@ -23,7 +23,7 @@ private:
     uint8_t parse_litteral(uint64_t* value);
     uint64_t parse_packet(uint64_t* result);
 
-    // FIXME, implement own or check if a simple array of int8 is faster
+    // std::bitset is actually pretty fast
     std::bitset<MAX_BITS> _bits;
     uint16_t _it;
     uint16_t _version_sum;
@@ -292,7 +292,7 @@ int main(int argc, char **argv)
     transmission.destroy();
 
     const uint64_t completion_time = timer_stop();
-    printf("Day 14 completion time: %" PRIu64 "µs\n", completion_time);
+    printf("Day 16 completion time: %" PRIu64 "µs\n", completion_time);
 
     printf("Answer 1 = %u\n", answer1);
     printf("Answer 2 = %lu\n", answer2);

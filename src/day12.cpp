@@ -1,7 +1,6 @@
 #include <stdio.h>
 
 #include "file.h"
-#include "stack.h"
 #include "strtoint.h"
 #include "timer.h"
 

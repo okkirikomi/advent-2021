@@ -136,6 +136,7 @@ uint16_t Enhancer::algo_index(const uint16_t input_i) {
 
 void Enhancer::enhance_n(const uint8_t n) {
     _infinite_value = 0;
+    // BETTER, don't scan everything before having extended into it
     for (uint8_t step = 0; step < n; ++step) {
         for (uint16_t i = 0; i < PICTURE_SIZE; ++i) {
             _buffer[i] = _algorithm[algo_index(i)];

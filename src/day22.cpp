@@ -1,4 +1,5 @@
 #include <bitset>
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -8,9 +9,6 @@
 
 const uint16_t INPUT_MAX = 128;
 const uint16_t MAX_PROCEDURES = 420;
-const uint8_t CUBE_SIDE = 101; /// [-50,50]
-const uint8_t ZERO_OFFSET = CUBE_SIDE / 2;
-const uint32_t N_CUBES = CUBE_SIDE*CUBE_SIDE*CUBE_SIDE;
 
 typedef struct Cube {
     int32_t x1, x2;
@@ -40,7 +38,6 @@ typedef struct Reactor {
     bool read_procedures(const char* str);
     uint32_t part_one() const { return _part_1; }
     uint64_t part_two() const { return _part_2; }
-    void step();
     void reboot();
 
 private:
@@ -151,7 +148,7 @@ void Reactor::add_diff(const Cube& c1, const Cube& c2) {
 
 // Here, rather than keeping the whole universe, we just track
 // the intented cubes to be turned on using basic 3D collisions
-// FIXME, make the cube array safe to increment
+// FIXME, make the cube/buffer arrays safe to increment
 void Reactor::reboot() {
     for (uint16_t i = 0; i < _n_procedure; ++i) {
         // create the cube for that procedure
@@ -185,24 +182,10 @@ void Reactor::reboot() {
 
     // now count the dots
     for (uint16_t i = 0; i < _n_cubes; ++i) {
-        _part_2 += _cubes[i].size();
+        const uint64_t size = _cubes[i].size();
+        if (abs(_cubes[i].x1) <= 50) _part_1 += size;
+        _part_2 += size;
     }
-}
-
-// FIXME, just count the results from boot() instead
-// no need to use that bitset
-void Reactor::step() {
-    std::bitset<N_CUBES> cubes;
-    for (uint8_t i = 0; i < 20; ++i) {
-        for (int32_t x = _procedures[i].x[0] + ZERO_OFFSET; x <= _procedures[i].x[1] + ZERO_OFFSET; ++x) {
-        for (int32_t y = _procedures[i].y[0] + ZERO_OFFSET; y <= _procedures[i].y[1] + ZERO_OFFSET; ++y) {
-            const int32_t xy = x + y * CUBE_SIDE;
-        for (int32_t z = _procedures[i].z[0] + ZERO_OFFSET; z <= _procedures[i].z[1] + ZERO_OFFSET; ++z) {
-            const uint32_t index = xy + z * CUBE_SIDE * CUBE_SIDE;
-            cubes.set(index, _procedures[i].on);
-        }}}
-    }
-    _part_1 = cubes.count();
 }
 
 static uint32_t get_int(const char* str, uint8_t& it) {
@@ -298,9 +281,8 @@ int main(int argc, char **argv)
         }
     }
 
-    reactor.step();
-    const uint32_t answer1 = reactor.part_one();
     reactor.reboot();
+    const uint32_t answer1 = reactor.part_one();
     const uint64_t answer2 = reactor.part_two();
 
     file.close();

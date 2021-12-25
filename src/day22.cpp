@@ -1,4 +1,3 @@
-#include <bitset>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -9,6 +8,7 @@
 
 const uint16_t INPUT_MAX = 128;
 const uint16_t MAX_PROCEDURES = 420;
+const uint16_t MAX_CUBES = 4000; // big enough for my input
 
 typedef struct Cube {
     int32_t x1, x2;
@@ -45,8 +45,8 @@ private:
     Procedure _procedures[MAX_PROCEDURES];
     uint16_t _n_procedure;
 
-    Cube _cubes[4000];
-    Cube _cubes_buffer[4000];
+    Cube _cubes[MAX_CUBES];
+    Cube _cubes_buffer[MAX_CUBES];
     uint16_t _n_cubes = 0;
     uint16_t _n_buffer = 0;
 
@@ -183,6 +183,10 @@ void Reactor::reboot() {
     // now count the dots
     for (uint16_t i = 0; i < _n_cubes; ++i) {
         const uint64_t size = _cubes[i].size();
+        // part one only considers cubes in the [-50,50] region.
+        // technically we should check all coordinates but I take
+        // a shortcut since all procedures are either completely
+        // in or out of that region
         if (abs(_cubes[i].x1) <= 50) _part_1 += size;
         _part_2 += size;
     }

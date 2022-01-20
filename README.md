@@ -23,4 +23,10 @@ Usage:
 * run.sh will run everything, or pass a range of days in parameter.
 * If executing manually, each program expects the input file path as parameter, no stdin.
 
+Lessons learned this year:
+* I cannot implement a syntax tree quickly
+* I'm rusty in linear algebra
+* std::bitset is pretty decent
+
+
 [Advent of Code 2021](https://adventofcode.com/2021)

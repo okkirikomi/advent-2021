@@ -7,8 +7,6 @@
 #include "timer.h"
 
 static const uint8_t INPUT_MAX = 128;
-//static const uint16_t Y_MAX = 100;
-//static const uint16_t X_MAX = 100;
 static const uint8_t Y_MAX = 10;
 static const uint8_t X_MAX = 10;
 static const uint16_t X_MAX_REAL = X_MAX * 25;
@@ -39,7 +37,6 @@ typedef struct Cave {
 
 private:
     void visit(const uint16_t to_x, const uint16_t to_y, const uint16_t hash_from);
-    uint8_t risk_at(const uint16_t a, const uint16_t b);
 
     uint16_t _cost_for[MAX_CHITONS];
     uint8_t _chitons[MAX_CHITONS];
@@ -63,6 +60,8 @@ void Cave::destroy() {
 // TODO, check if using a grid 25x larger is faster than
 // calculating risk over and over
 uint8_t risk_at(const uint16_t x, const uint16_t y) {
+    (void) x;
+    (void) y;
     // loop around to 25 times X_MAX, Y_MAX
     // increasing risk +1 and looping at 9 -> 1
 
@@ -75,13 +74,13 @@ void Cave::visit(const uint16_t to_x, const uint16_t to_y, const uint16_t cost_f
     // cost for going to that new pos
     const uint16_t new_cost =  cost_from + _chitons[hash_to];
 
-    printf("    -> %u,%u %u < %u?\n", to_x, to_y, new_cost, _cost_for[hash_to]);
+    //printf("    -> %u,%u %u < %u?\n", to_x, to_y, new_cost, _cost_for[hash_to]);
 
     // visit if it's better than what we have for that pos already
     if (_cost_for[hash_to] == 0 || new_cost < _cost_for[hash_to]) {
         _cost_for[hash_to] = new_cost;
 
-        printf("Pushing %u,%u cost %u\n", to_x,to_y, new_cost);
+        //printf("Pushing %u,%u cost %u\n", to_x,to_y, new_cost);
         // FIXME, the priority queue is busted
         _to_visit.push(hash_to, new_cost);
     }
@@ -97,7 +96,7 @@ uint16_t Cave::lowest_risk(const uint16_t max_x, const uint16_t max_y) {
         const uint16_t y = hash_pos / X_MAX;
         const uint16_t cost = _cost_for[hash_pos];
 
-        printf("\nVisiting %u,%u \n",x, y);
+        //printf("\nVisiting %u,%u \n",x, y);
 
         // try the 4 neighbors
         if (x != 0) visit(x-1, y, cost);
@@ -105,10 +104,9 @@ uint16_t Cave::lowest_risk(const uint16_t max_x, const uint16_t max_y) {
         if (x != X_MAX -1) visit(x+1, y, cost);
         if (y != Y_MAX -1) visit(x, y+1, cost);
 
-        //if (hash_pos == goal) break;
+        if (hash_pos == goal) break;
 
-        _to_visit.print();
-
+        //_to_visit.print();
     }
 
     //for (uint16_t i = 0 ; i < MAX_CHITONS; ++i)

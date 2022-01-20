@@ -17,6 +17,8 @@ typedef struct File {
     bool open(const char* path);
     void close();
     off_t readline(char* out, const int buffer_size);
+    char* data() const { return _data; }
+    off_t size() const { return _size; }
 
 private:
     char* _data;

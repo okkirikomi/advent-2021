@@ -1,5 +1,5 @@
-#include <bitset>
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 
 #include "bitset.h"
@@ -7,10 +7,23 @@
 #include "strtoint.h"
 #include "timer.h"
 
+// FIXME
+//#ifndef UINT128MAX
+//#error "no __uint128_t"
+//#endif
+
 const uint16_t INPUT_MAX = 256;
-const uint8_t MAX_Y = 137;
 const uint8_t MAX_X = 139;
+const uint8_t MAX_Y = 136;
 const uint16_t MAX_CUCUMBERS = 4800;
+
+
+#define N 256
+
+    uint64_t _p[N][N/32];
+    uint64_t _p2[N][N/32];
+    uint64_t (*p)[N/32];
+    uint64_t (*p2)[N/32];
 
 typedef struct Pos {
     uint8_t x, y;
@@ -24,38 +37,45 @@ typedef struct Cucumbers {
     void print() const;
 
 private:
-    std::bitset<MAX_X> _occupied[MAX_Y];
+    void set(const int x, const int y, const int v);
+    int get(const int x, const int y);
     uint8_t _row;
 
-    Pos _east[MAX_CUCUMBERS];
-    uint16_t _n_east;
-    Pos _south[MAX_CUCUMBERS];
-    uint16_t _n_south;
+
 } Cucumbers;
 
 void Cucumbers::init() {
     _row = 0;
-    _n_east = 0;
-    _n_south = 0;
+    p = _p + 1;
+    p2 = _p2 + 1;
 }
 
 void Cucumbers::destroy() {
     // nothing
 }
 
+int Cucumbers::get(const int x, const int y) {
+    return ((p[y][x/32]) >> ((x&31)*2))&3;
+}
+
+void Cucumbers::set(const int x, const int y, const int val) {
+    printf("set %i %i %i\n", x, y, val);
+    p[y][x/32] &= ~(3ll << ((x&31)*2));
+    p[y][x/32] |= ((uint64_t)val << ((val&31)*2));
+}
+
 void Cucumbers::print() const {
     const size_t BUF_SIZE = sizeof(char)*MAX_Y*MAX_X + MAX_Y + 1;
     char buffer[BUF_SIZE];
     memset(buffer, '.', sizeof(buffer));
-    for (uint8_t i = 0; i < _n_east; ++i) {
-        buffer[_east[i].x+_east[i].y*(MAX_X+1)] = '>';
+#if 0
+    for (int j = 0; j < Y; j++) {
+        for (int i = 0; i < X; i++) {
+            putchar(".>_v"[get(p,i,j)]);
+        }
+        putchar('\n');
     }
-    for (uint8_t i = 0; i < _n_south; ++i) {
-        buffer[_south[i].x+_south[i].y*(MAX_X+1)] = 'v';
-    }
-    for (uint8_t i = 0; i < MAX_Y; ++i) {
-        buffer[(MAX_X)+i*(MAX_X+1)] = '\n';
-    }
+#endif
     buffer[BUF_SIZE-1] = '\0';
     printf("%s\n", buffer);
 }
@@ -63,65 +83,68 @@ void Cucumbers::print() const {
 // BETTER, this can be much faster if we pack
 // everything in a bit
 uint16_t Cucumbers::move() {
+    printf("%i %i\n", MAX_X, MAX_Y);
     uint16_t step = 0;
-    bool moved = true;
-    std::bitset<MAX_X> buffer[MAX_Y];
-
-    memcpy(buffer, _occupied, sizeof(_occupied));
-
-    while (moved) {
-        moved = false;
-        // go through east first
-        for (uint16_t i = 0; i < _n_east; ++i) {
-            // check if it can move
-            const uint8_t x = (_east[i].x == (MAX_X - 1))? 0 : _east[i].x + 1;
-            if (_occupied[_east[i].y][x] == true) continue;
-            // set new pos on and old pos off
-            buffer[_east[i].y].set(x, 1);
-            buffer[_east[i].y].set(_east[i].x, 0);
-            // update our cucumber
-            _east[i].x = x;
-            moved = true;
+    uint64_t one_moved;
+    do {
+        one_moved = 0;
+        step += 1;
+        for (int y = 0; y < MAX_Y; ++y) {
+            int preveast = get(MAX_X-1, y) == 1 ? 1 : 0;
+            printf("preveast %i %i %i\n", preveast, MAX_X-1, y);
+            set(MAX_X, y, get(0, y));
+            set(MAX_X+1, y, 3);
+            for (uint8_t x = 0; x < (MAX_X+31)/32; ++x) {
+                const __uint128_t v = *(__uint128_t*)(&p[y][x]);
+                const __uint128_t takenmask = (__int128_t)1 << 64 | 0x5555555555555555l; // FIXME, make global
+                __uint128_t taken = v & takenmask;
+                uint64_t east =  v & 0xaaaaaaaaaaaaaaaal;
+                east = east >> 1;
+                east ^= taken;
+                taken |= taken << 1;
+                const __uint128_t moved = (((__int128_t)east << 2) | preveast) & ~taken;
+                uint64_t removed = v ^ (moved >> 2);
+                one_moved |= moved;
+                p2[y][x] = removed | moved;
+                preveast = east >> 62;
+            }
         }
-        if (moved) memcpy(_occupied, buffer, sizeof(_occupied));
-        // then south
-        for (uint16_t i = 0; i < _n_south; ++i) {
-            // check if it can move
-            const uint8_t y = (_south[i].y == (MAX_Y - 1))? 0 : _south[i].y + 1;
-            if (_occupied[y][_south[i].x] == true) continue;
-            // set new pos on and old pos off
-            buffer[y].set(_south[i].x, 1);
-            buffer[_south[i].y].set(_south[i].x, 0);
-            // update our cucumber
-            _south[i].y = y;
-            moved = true;
+
+        for (uint8_t i = 0; i < (MAX_X+31)/32; ++i) {
+            p2[-1][i] = p2[MAX_Y-1][i];
+            p2[MAX_Y][i] = p2[0][i];
         }
-        if (moved) memcpy(_occupied, buffer, sizeof(_occupied));
-        ++step;
-    }
+        for (uint8_t y = 0; y < MAX_Y; ++y) {
+        for (uint8_t x = 0; x < (MAX_X+31)/32; ++x) {
+            const uint64_t vprev = p2[y-1][x];
+            const uint64_t v = p2[y][x];
+            uint64_t vnext = p2[y+1][x];
+            uint64_t taken = v & 0x5555555555555555l;
+            uint64_t takennext = vnext & 0x5555555555555555l;
+            uint64_t south =  v & 0xaaaaaaaaaaaaaaaal;
+            uint64_t southprev =  vprev & 0xaaaaaaaaaaaaaaaal;
+            south |= south >> 1;
+            southprev |= southprev >> 1;
+            taken |= taken << 1;
+            takennext |= takennext << 1;
+            const uint64_t movedout = south & ~takennext;
+            const uint64_t movedin = southprev & ~taken;
+            p[y][x] = (v ^ movedout) | movedin;
+            one_moved |= movedin;
+        }}
+    } while (one_moved);
     return step;
 }
 
 bool Cucumbers::read_map(const char* str) {
-    if (_row == MAX_Y) return false;
-    uint8_t it = 0;
+    size_t it = 0;
+    uint8_t i = 0;
     while (str[it] != 0) {
-        if (str[it] == '>') {
-            if (_n_east == MAX_CUCUMBERS) return false;
-            _east[_n_east].x = it;
-            _east[_n_east].y = _row;
-            _occupied[_row].set(it, 1);
-            _n_east += 1;
-        } else if (str[it] == 'v') {
-            if (_n_south == MAX_CUCUMBERS) return false;
-            _south[_n_south].x = it;
-            _south[_n_south].y = _row;
-            _occupied[_row].set(it, 1);
-            _n_south += 1;
-        } else if (str[it] != '.') return false;
-        it += 1;
+        //printf("%c",str[it]);
+        if (str[it] != '.') set(i, _row, (str[it] == 'v')? 3 : 1);
+        ++it;
+        ++i;
     }
-    if (it != MAX_X) return false;
     _row += 1;
     return true;
 }
@@ -151,7 +174,7 @@ int main(int argc, char **argv)
             return -1;
         }
     }
-
+    printf("\n");
     const uint16_t answer1 = cucumbers.move();
 
     file.close();
